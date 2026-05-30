@@ -131,5 +131,5 @@ settings:
   # Number of top opportunities to include in each digest
   top_n: 8
   # LLM models (change only if you know what you are doing)
-  model_score: "claude-opus-4-5"
-  model_filter: "claude-opus-4-5"
+  model_score: "claude-opus-4-7"
+  model_filter: "claude-opus-4-7"
