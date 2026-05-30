@@ -4,13 +4,15 @@ You miss every shot you don't take.
 
 **Scanner is an autonomous agent that scans for opportunities and emails your inbox every day.**
 
-All you have to do to get started is open in Claude code in any folder, and say "Hi Claude, I'm ready to build."
+All you have to do to get started is open Claude Code in any folder and send it this message:
 
-and give the following command:
-```bash
-git clone https://github.com/sbel2/scanner.git
-cd scanner
-```
+> Hi Claude, I'm ready to build.
+> ```bash
+> git clone https://github.com/sbel2/scanner.git
+> cd scanner
+> ```
+
+Claude clones the repo and takes it from there.
 
 That's it. Claude takes over from there — installs everything, interviews you about your
 mission, writes your config, sets up your keys, and sends your first digest. All in
