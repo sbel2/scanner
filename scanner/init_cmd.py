@@ -282,8 +282,9 @@ def _mission_filled_out() -> bool:
     if not MISSION_FILE.exists():
         return False
     content = MISSION_FILE.read_text(encoding="utf-8")
-    # The template leaves placeholder text — if the user hasn't changed the name field it's a sign
-    return "Your Name" not in content and "your.email@example.com" not in content
+    # Check if the user has replaced the main placeholder "Your Name"
+    # or if the file contains actual mission content (alignment sections).
+    return "Your Name" not in content and "alignment:" in content
 
 
 def _fire_first_send():

@@ -112,19 +112,18 @@ preferences:
 # understands who you are from the `profile` section above — you usually don't
 # need anything here.
 #
+# `rules` are natural language rejection criteria for the LLM.
+# Claude will generate these dynamically based on your mission.
+#
 # `hard_reject_patterns` is an OPTIONAL fast path: any opportunity whose text
-# matches one of these (case-insensitive) regexes is rejected immediately,
-# skipping the LLM call. Because audience rules are relative to YOU, only add
-# patterns that should ALWAYS exclude you. For example:
-#   - a PhD student might reject "undergraduate only" and "high school only"
-#   - an undergrad would do the OPPOSITE and leave this empty
-# Leave it empty (recommended) to let the LLM handle every case.
+# matches one of these (case-insensitive) regexes is rejected immediately.
 eligibility:
-  hard_reject_patterns: []
-  # Example for a graduate-level applicant:
-  #   - "undergrad(uate)? (only|students only)"
-  #   - "high\\s*school (students? )?only"
-  #   - "phd\\s+graduates?\\s+only"
+  rules:
+    - "Reject if the opportunity is explicitly for undergraduates only."
+    - "Reject if the candidate must be a US citizen and they are not."
+  hard_reject_patterns:
+    - "undergrad(uate)? (only|students only)"
+    - "high\\s*school (students? )?only"
 
 # ----------------------------------------------------------
 # SCORING WEIGHTS  (optional — defaults shown)

@@ -108,12 +108,14 @@ ICAL_FEEDS: list[dict] = _prefs.get("ical_feeds", [])
 # ---------------------------------------------------------------------------
 # Eligibility
 # ---------------------------------------------------------------------------
-# Optional fast-path regex rejects. These are inherently relative to YOUR
-# profile (e.g. "undergraduate only" should reject a PhD applicant but NOT an
-# undergrad), so they are user-supplied and default to empty. When empty, the
-# profile-aware LLM eligibility check decides everything.
 _eligibility = _mission.get("eligibility", {})
+
+# Optional fast-path regex rejects.
 HARD_REJECT_PATTERNS: list[str] = _eligibility.get("hard_reject_patterns", [])
+
+# Custom natural-language rules for the LLM eligibility check.
+# These are injected into the "Rules" section of the eligibility prompt.
+ELIGIBILITY_RULES: list[str] = _eligibility.get("rules", [])
 
 # ---------------------------------------------------------------------------
 # Scoring weights

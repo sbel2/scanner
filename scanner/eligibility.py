@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 
-from .config import HARD_REJECT_PATTERNS, MODEL_FILTER, USER_PROFILE
+from .config import ELIGIBILITY_RULES, HARD_REJECT_PATTERNS, MODEL_FILTER, USER_PROFILE
 from .llm import complete
 from .models import EligibilityVerdict, Opportunity
 
@@ -28,6 +28,7 @@ def rule_based_reject(opp: Opportunity) -> tuple[bool, str]:
 
 
 def _build_system_prompt() -> str:
+    rules_list = "\n".join(f"- {rule}" for rule in ELIGIBILITY_RULES) if ELIGIBILITY_RULES else "- \"no\" only if the opportunity explicitly excludes this candidate (e.g. undergrad-only, must be graduating in <12 months, citizenship/residency mismatch, age cap, role mismatch)."
     return f"""You evaluate whether a specific candidate is eligible for an opportunity.
 
 CANDIDATE PROFILE:
@@ -37,8 +38,7 @@ You will receive an opportunity title, summary, and any eligibility text.
 Return strict JSON: {{"eligible": "yes" | "no" | "unclear", "reason": "<one short sentence>"}}.
 
 Rules:
-- "no" only if the opportunity explicitly excludes this candidate (e.g. undergrad-only,
-  must be graduating in <12 months, citizenship/residency mismatch, age cap, role mismatch).
+{rules_list}
 - "unclear" if eligibility text is missing or ambiguous.
 - "yes" if there is positive evidence the candidate qualifies, OR the opportunity is broadly
   open and nothing in the text excludes them.
