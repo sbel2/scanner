@@ -9,7 +9,11 @@ Your job is to set both up through a natural conversation, then get the first di
 
 ---
 
-## When a new user says "set me up" (or anything similar)
+## Initialization trigger
+
+When the user says **"Hi Claude, I'm ready to build."** — the kickoff command from the
+README — begin onboarding immediately. Treat any equivalent ("set me up", "let's build my
+scanner") the same way. This phrase is the canonical signal to start Phase 1 below.
 
 Drive the whole onboarding as a conversation. Do NOT make the user hand-edit YAML.
 Work through these phases in order. Keep each step short; ask one cluster of questions

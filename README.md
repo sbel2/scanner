@@ -1,48 +1,38 @@
 # scanner
 
-Welcome to scanner — you miss every shot you don't take.
+You miss every shot you don't take.
 
-Scanner is an autonomous daily agent. It scours the web for AI events, funding, research
-programs, and internships, throws out anything you're ineligible for, scores the rest
-against your personal mission, and emails you a ranked shortlist every morning.
+**Scanner is an autonomous agent that scans for opportunities and emails your inbox every day.**
 
-You don't configure it by hand. You **describe yourself to Claude in plain English**, and
-Claude writes your config (`mission.yaml`) — your profile, search queries, eligibility
-rules, and scoring context — for you.
+All you have to do to get started is open in Claude code in any folder, and say "Hi Claude, I'm ready to build."
 
-## Setup (recommended: let Claude do it)
-
+and give the following command:
 ```bash
 git clone https://github.com/sbel2/scanner.git
 cd scanner
 ```
 
-Open the folder in [Claude Code](https://claude.ai/download) and say **"set me up."**
-Claude follows [CLAUDE.md](./CLAUDE.md): it installs dependencies, interviews you about your
-mission, generates `mission.yaml`, walks you through your three API keys, and sends your first
-digest — all in conversation.
+That's it. Claude takes over from there — installs everything, interviews you about your
+mission, writes your config, sets up your keys, and sends your first digest. All in
+conversation, no files to edit by hand.
 
-Not using Claude Code? [CLAUDE_PROMPT.md](./CLAUDE_PROMPT.md) has a prompt you can paste into
-any Claude chat to generate your `mission.yaml`.
+You'll need three keys:
 
-## Setup (manual fallback)
+| Key | Source |
+|---|---|
+| `CLAUDE_CODE_OAUTH_TOKEN` | `claude setup-token` (uses your Claude Pro/Max sub) |
+| `TAVILY_API_KEY` | https://app.tavily.com/ |
+| `RESEND_API_KEY` | https://resend.com/ |
+
+## If you prefer to set up yourself. Here is what you do:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m scanner init                     # creates .env + mission.yaml, sets daily schedule
-# fill in mission.yaml (see mission.example.yaml) and the 3 keys in .env (see .env.example)
-SCANNER_DRY_RUN=1 python -m scanner run    # preview without sending
+# fill in mission.yaml (see mission.example.yaml) and the 3 keys in .env
 python -m scanner run --welcome            # send your first digest
 ```
-
-**You need three keys** (all have free tiers — `.env.example` says where to get each):
-
-| Key | Source | Free tier |
-|---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | `claude setup-token` (uses your Claude Pro/Max sub) | included |
-| `TAVILY_API_KEY` | https://app.tavily.com/ | 1,000 searches/mo |
-| `RESEND_API_KEY` | https://resend.com/ | 100 emails/day |
 
 ## Daily operation
 
