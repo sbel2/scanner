@@ -139,7 +139,8 @@ scoring:
 # EMAIL SETTINGS
 # ----------------------------------------------------------
 email:
-  # Where to send the daily digest
+  # Where to send the daily digest — MUST be a real inbox you check.
+  # (Leave as-is and setup will prompt you; the first digest is sent here.)
   to: "you@example.com"
   # Sender address — use "onboarding@resend.dev" to skip domain verification on Resend
   from: "onboarding@resend.dev"

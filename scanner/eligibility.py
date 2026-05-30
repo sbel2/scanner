@@ -28,7 +28,16 @@ def rule_based_reject(opp: Opportunity) -> tuple[bool, str]:
 
 
 def _build_system_prompt() -> str:
-    rules_list = "\n".join(f"- {rule}" for rule in ELIGIBILITY_RULES) if ELIGIBILITY_RULES else "- \"no\" only if the opportunity explicitly excludes this candidate (e.g. undergrad-only, must be graduating in <12 months, citizenship/residency mismatch, age cap, role mismatch)."
+    # Mission-specific rejection rules are appended to (not a replacement for) the
+    # base yes/no/unclear contract, so the JSON answer set is always well defined.
+    custom_rules = ""
+    if ELIGIBILITY_RULES:
+        rules_list = "\n".join(f"- {rule}" for rule in ELIGIBILITY_RULES)
+        custom_rules = (
+            '\n\nAdditional rejection rules specific to this candidate '
+            '(answer "no" if any apply):\n'
+            f"{rules_list}"
+        )
     return f"""You evaluate whether a specific candidate is eligible for an opportunity.
 
 CANDIDATE PROFILE:
@@ -38,10 +47,11 @@ You will receive an opportunity title, summary, and any eligibility text.
 Return strict JSON: {{"eligible": "yes" | "no" | "unclear", "reason": "<one short sentence>"}}.
 
 Rules:
-{rules_list}
+- "no" only if the opportunity explicitly excludes this candidate (e.g. undergrad-only,
+  must be graduating in <12 months, citizenship/residency mismatch, age cap, role mismatch).
 - "unclear" if eligibility text is missing or ambiguous.
 - "yes" if there is positive evidence the candidate qualifies, OR the opportunity is broadly
-  open and nothing in the text excludes them.
+  open and nothing in the text excludes them.{custom_rules}
 Output ONLY the JSON object, no prose.
 """
 
