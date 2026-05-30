@@ -14,11 +14,10 @@ All you have to do to get started is open Claude Code in any folder and send it 
 
 Claude clones the repo and takes it from there.
 
-That's it. Claude takes over from there — installs everything, interviews you about your
-mission, writes your config, sets up your keys, and sends your first digest. All in
-conversation, no files to edit by hand.
+That's it. Claude interviews you about your
+mission and sends your first digest.
 
-You'll need three keys:
+You'll need to generate three keys manually, and add to .env:
 
 | Key | Source |
 |---|---|
