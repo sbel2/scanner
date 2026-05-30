@@ -101,16 +101,24 @@ class AlignmentScorer:
             text = complete(self._system, user_msg, MODEL_SCORE)
             data = json.loads(_extract_json(text))
             return AlignmentScore(
-                score=float(data["score"]),
-                dim_agents=float(data.get("dim_relevance", data.get("dim_agents", 0))),
-                dim_research=float(data.get("dim_impact", data.get("dim_research", 0))),
-                dim_founder=float(data.get("dim_eligibility_fit", data.get("dim_founder", 0))),
-                dim_geo=float(data.get("dim_geo", 0)),
-                dim_credits=float(data.get("dim_credits", 0)),
+                score=_clamp(data["score"]),
+                dim_relevance=_clamp(data.get("dim_relevance", 0)),
+                dim_impact=_clamp(data.get("dim_impact", 0)),
+                dim_eligibility_fit=_clamp(data.get("dim_eligibility_fit", 0)),
+                dim_geo=_clamp(data.get("dim_geo", 0)),
+                dim_credits=_clamp(data.get("dim_credits", 0)),
                 reasoning=str(data.get("reasoning", "")),
             )
         except Exception as e:
             return AlignmentScore(score=0.0, reasoning=f"scoring failed: {e}")
+
+
+def _clamp(value, lo: float = 0.0, hi: float = 10.0) -> float:
+    """Coerce an LLM-returned score into the valid 0–10 range."""
+    try:
+        return max(lo, min(hi, float(value)))
+    except (TypeError, ValueError):
+        return lo
 
 
 def _extract_json(text: str) -> str:

@@ -50,9 +50,9 @@ class EligibilityVerdict(BaseModel):
 
 class AlignmentScore(BaseModel):
     score: float  # 0-10
-    dim_agents: float = 0
-    dim_research: float = 0
-    dim_founder: float = 0
+    dim_relevance: float = 0
+    dim_impact: float = 0
+    dim_eligibility_fit: float = 0
     dim_geo: float = 0
     dim_credits: float = 0
     reasoning: str

@@ -7,7 +7,6 @@ pydantic>=2.5.0          # Typed data models
 jinja2>=3.1.0            # Email template rendering
 python-dotenv>=1.0.0     # .env file loading
 pyyaml>=6.0.0            # mission.yaml parsing
-feedparser>=6.0.11       # RSS feed parsing
 
 # Optional: only needed if using ANTHROPIC_API_KEY instead of CLAUDE_CODE_OAUTH_TOKEN
 # anthropic>=0.40.0

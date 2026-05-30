@@ -29,20 +29,32 @@ at a time.
    `mission.example.yaml` → `mission.yaml` and prints key-setup guidance. (It's safe to
    re-run; it skips files that already exist.)
 
-### Phase 2 — Interview the user for their mission
-Ask, conversationally, for whatever you can't infer:
+### Phase 2 — Let the user tell their story, then fill gaps
+**Open with ONE warm, open-ended prompt and let them write freely.** Do NOT present
+multiple-choice or checkbox questions, and do NOT march them through a Q&A survey — that
+flattens the mission, which is the single most important input. Invite a long-form answer,
+e.g.:
+
+> "Tell me your story. What are you building or working toward, and what kind of
+> opportunities would actually move the needle for you? Write as much or as little as you
+> like — a paragraph or three is perfect. I'll pull out the details and ask about anything
+> I'm still missing."
+
+Most of what you need is usually in that paragraph. **Parse it first**, then ask brief,
+targeted follow-ups ONLY for the facts they didn't cover. The facts you ultimately need:
 - **Who they are:** name, role (PhD student / founder / researcher / etc.), home city/region.
-- **What they're building / their goal:** 2–4 sentences. This is the most important input.
+- **What they're building / their goal:** the 2–4 sentence core mission (usually already in
+  their story — this is the most important input).
 - **What they want to find:** which of event / funding / research / internship matter.
 - **Where:** preferred locations in priority order (default `Remote` if they don't care).
 - **Hard disqualifiers:** anything that should ALWAYS reject an opportunity for them
   (e.g. "undergrad-only", "must be a US citizen", "PhD-graduates-only"). These become
   both natural-language `rules` and fast-path `hard_reject_patterns`.
 - **Email:** a REAL inbox to receive the digest. Never leave `you@example.com` — the first
-  digest sends there. Ask explicitly.
+  digest sends there. Ask explicitly if it isn't in their story.
 
-If the user gives you a single paragraph ("I'm a 2nd-year PhD building X, looking for Y"),
-extract as much as you can and only ask follow-ups for what's missing.
+When you do need to follow up, ask in prose (a short clustered question is fine) — still no
+multiple-choice menus. Keep it to one round of follow-ups if you can.
 
 ### Phase 3 — Write `mission.yaml`
 Generate the complete file from the interview. Rules:
@@ -73,11 +85,18 @@ Walk them through `.env` (open `.env.example` for the canonical instructions):
 - **Resend:** free key from https://resend.com/ → `RESEND_API_KEY`.
 Confirm each is filled before moving on.
 
-### Phase 5 — Verify, then go live
-1. Dry run first (no email sent): `SCANNER_DRY_RUN=1 python -m scanner run`. Show them what
-   it would have sent and sanity-check the results with them.
-2. Send for real: `python -m scanner run --welcome`.
-3. The daily 08:00 schedule (launchd on macOS, cron on Linux) is installed by
+### Phase 5 — Go live
+1. **Once all API keys are present, go straight to a real, fun welcome send:**
+   `python -m scanner run --welcome`. Don't gate on a dry run — the user wants the first
+   digest to actually land in their inbox as a celebratory "Scanner is live" moment. Make
+   it feel like one (warm framing in your message; the `--welcome` flag already gives the
+   email its welcome treatment).
+2. **Watch the run and address any issues as they come up** — if the send errors (bad key,
+   Resend domain, empty results, etc.), diagnose it, fix it, and re-run until the welcome
+   email genuinely lands. Don't hand the user a broken first impression.
+3. Fall back to the dry run (`SCANNER_DRY_RUN=1 python -m scanner run`) ONLY when keys are
+   still missing/placeholder, or if the user explicitly wants a no-send preview first.
+4. The daily 08:00 schedule (launchd on macOS, cron on Linux) is installed by
    `python -m scanner init`; confirm it's in place. No further action is needed after this.
 
 ---
