@@ -1,0 +1,135 @@
+# ============================================================
+#  SCANNER — MISSION FILE
+#  This is the single source of truth for your scanner.
+#  Fill this out once, then run:  python -m scanner run
+# ============================================================
+
+# ----------------------------------------------------------
+# WHO YOU ARE
+# ----------------------------------------------------------
+profile:
+  # Your name (used in eligibility checks and email greetings)
+  name: "Your Name"
+
+  # Your role — e.g. "PhD student", "indie hacker", "startup founder", "researcher"
+  role: "Your Role"
+
+  # Your primary city/region — used to weight geographic scoring
+  # Examples: "San Francisco, CA" | "Boston, MA" | "London, UK" | "Remote"
+  location: "Your City, State"
+
+  # A short paragraph about who you are and what you are building.
+  # This is injected directly into the LLM scoring prompt, so be specific.
+  # The more context you give, the better the scoring.
+  background: |
+    Write 2–4 sentences about your background, current work, and goals.
+    Example: "I am a 2nd-year PhD student at MIT studying machine learning.
+    I am building an open-source tool for AI-assisted code review and looking
+    for hackathons, credits, and research internships to accelerate my work."
+
+# ----------------------------------------------------------
+# WHAT YOU ARE WORKING ON  (alignment context)
+# These are read by the LLM scorer to judge relevance.
+# Add as many sections as you like. Each entry has a title and content.
+# ----------------------------------------------------------
+alignment:
+  - title: "Core Mission"
+    content: |
+      Describe your overarching goal in 1–3 sentences.
+      Example: "Build the best AI agent framework for personal productivity."
+
+  - title: "Current Project"
+    content: |
+      Describe your main project — what it does, who it is for, what stage it is at.
+
+  # Add more sections as needed:
+  # - title: "Research Interest"
+  #   content: |
+  #     Describe a research area you are actively pursuing.
+
+# ----------------------------------------------------------
+# OPPORTUNITY PREFERENCES
+# ----------------------------------------------------------
+preferences:
+  # Geographic priorities — list in order from most to least preferred.
+  # The scorer will use this to weight in-person vs. remote opportunities.
+  locations:
+    - "Your City"          # highest priority — in-person here is best
+    # - "New York City"    # second priority
+    # - "San Francisco"    # worth a flight for big opportunities
+    # - "Remote"           # acceptable for high-value opportunities
+
+  # Which opportunity categories to scan for.
+  # Options: event | funding | research | internship
+  categories:
+    - event
+    - funding
+    - research
+    - internship
+
+  # Tavily search queries — these drive the long-tail web discovery.
+  # Be specific. Include year, location, and key terms.
+  # Aim for 10–30 queries covering your main opportunity types.
+  search_queries:
+    # --- Events ---
+    - "AI hackathon [YOUR CITY] 2026 in-person"
+    - "AI agents meetup [YOUR CITY] 2026"
+    - "AI conference 2026 student travel grant"
+
+    # --- Funding / Credits ---
+    - "AI startup credits no VC required solo founder 2026"
+    - "OpenAI API credits university student 2026"
+    - "Anthropic Claude credits student researcher 2026"
+    - "AWS Activate Founders self-serve credits 2026"
+    - "Google for Startups Cloud credits 2026"
+
+    # --- Internships / Research ---
+    - "AI research internship Summer 2026 application open"
+    - "AI engineer internship Summer 2026 PhD"
+
+    # --- Accelerators / Fellowships ---
+    - "AI startup accelerator 2026 application open early-stage"
+    - "AI fellowship founders 2026"
+
+  # Lu.ma calendar IDs to subscribe to (optional).
+  # To find a cal-XXX ID: open the lu.ma calendar page, view source, search "cal-"
+  # Example: "cal-EnsrRAJPfkZzBsv"
+  luma_calendar_ids: []
+
+  # Generic ICS calendar feeds (optional).
+  # Each entry needs a name, url, and optional default location.
+  ical_feeds: []
+  # Example:
+  # ical_feeds:
+  #   - name: "mit-csail"
+  #     url: "https://calendar.mit.edu/department/comp_sci_artificial_intelligence_lab/calendar.ics"
+  #     location: "Cambridge, MA"
+
+# ----------------------------------------------------------
+# SCORING WEIGHTS  (optional — defaults shown)
+# These control how the final score is computed.
+# final_score = alignment_score * alignment_weight + urgency_score * urgency_weight
+# ----------------------------------------------------------
+scoring:
+  alignment_weight: 0.7
+  urgency_weight: 0.3
+  min_score_to_send: 4.0   # items below this score are dropped from the digest
+
+# ----------------------------------------------------------
+# EMAIL SETTINGS
+# ----------------------------------------------------------
+email:
+  # Where to send the daily digest
+  to: "you@example.com"
+  # Sender address — use "onboarding@resend.dev" to skip domain verification on Resend
+  from: "onboarding@resend.dev"
+
+# ----------------------------------------------------------
+# RUNTIME SETTINGS
+# ----------------------------------------------------------
+settings:
+  # Number of top opportunities to include in each digest
+  top_n: 8
+  # LLM models (change only if you know what you are doing)
+  model_score: "claude-sonnet-4-6"
+  model_filter: "claude-haiku-4-5-20251001"

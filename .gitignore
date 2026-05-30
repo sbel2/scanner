@@ -1,0 +1,29 @@
+# Secrets and API keys — never commit these
+.env
+
+# User mission file — personal, not committed
+# (mission.yaml.template IS committed as the blank template)
+mission.yaml
+
+# Database
+*.db
+*.db-journal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Logs and digests
+logs/
+*.log
+
+# Generated scheduler files (created by `python -m scanner init`)
+launchd/com.scanner.plist
+install_cron.sh
