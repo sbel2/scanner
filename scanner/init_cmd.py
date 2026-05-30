@@ -198,6 +198,10 @@ def _setup_launchd():
     <string>{working_dir}/logs/scanner.err.log</string>
     <key>RunAtLoad</key>
     <false/>
+    <key>WakeSystem</key>
+    <true/>
+    <key>ProcessType</key>
+    <string>Background</string>
 </dict>
 </plist>
 """
