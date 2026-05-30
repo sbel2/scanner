@@ -26,7 +26,7 @@ def _group_by_category(items: list[ScoredOpportunity]) -> "OrderedDict[str, list
     return OrderedDict((c, buckets[c]) for c in CATEGORY_ORDER if buckets.get(c))
 
 
-def render(items: list[ScoredOpportunity], total_new: int) -> tuple[str, str]:
+def render(items: list[ScoredOpportunity], total_new: int, welcome: bool = False) -> tuple[str, str]:
     grouped = _group_by_category(items)
     template = _env.get_template("digest.html.j2")
     html = template.render(
@@ -34,13 +34,14 @@ def render(items: list[ScoredOpportunity], total_new: int) -> tuple[str, str]:
         grouped=grouped,
         today=date.today().isoformat(),
         total=total_new,
+        welcome=welcome,
     )
     subject = f"AI scan · {date.today().isoformat()} · {len(items)} picks"
     return subject, html
 
 
-def send(items: list[ScoredOpportunity], total_new: int) -> tuple[str, list[str]]:
-    subject, html = render(items, total_new)
+def send(items: list[ScoredOpportunity], total_new: int, welcome: bool = False) -> tuple[str, list[str]]:
+    subject, html = render(items, total_new, welcome=welcome)
 
     archive = Path(__file__).resolve().parent.parent / "logs" / f"digest-{date.today().isoformat()}.html"
     archive.parent.mkdir(exist_ok=True)

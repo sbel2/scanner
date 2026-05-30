@@ -13,9 +13,9 @@ from .scoring import AlignmentScorer
 from .sources import collect_all
 
 
-def run() -> int:
+def run(welcome: bool = False) -> int:
     db.init_db(DB_PATH)
-    print(f"[scanner] starting run · dry_run={DRY_RUN} · top_n={TOP_N}")
+    print(f"[scanner] starting run · dry_run={DRY_RUN} · top_n={TOP_N} · welcome={welcome}")
 
     with db.connect(DB_PATH) as conn:
         run_id = db.start_run(conn)
@@ -72,11 +72,11 @@ def run() -> int:
 
             if top:
                 if DRY_RUN:
-                    subject, html = emailer.render(top, total_new=len(new))
+                    subject, html = emailer.render(top, total_new=len(new), welcome=welcome)
                     print(f"[scanner] DRY_RUN — would send: {subject}")
                     print(f"[scanner] DRY_RUN — html preview ({len(html)} chars)")
                 else:
-                    subject, sent_ids = emailer.send(top, total_new=len(new))
+                    subject, sent_ids = emailer.send(top, total_new=len(new), welcome=welcome)
                     with db.connect(DB_PATH) as conn:
                         db.record_digest(conn, sent_ids, subject)
                     print(f"[scanner] sent: {subject}")

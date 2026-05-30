@@ -214,7 +214,6 @@ def _setup_launchd():
         try:
             subprocess.run(["launchctl", "load", str(dest)], check=True, capture_output=True)
             print(f"[ok]   Installed and loaded launchd agent: {label}")
-            print(f"       Runs daily at 08:00. To test now: launchctl start {label}")
         except subprocess.CalledProcessError as e:
             print(f"[warn] launchctl load failed: {e.stderr.decode().strip()}")
             print(f"       You can manually load it: launchctl load {dest}")
@@ -250,30 +249,96 @@ def _setup_cron():
     print(f"[ok]   Or just run: bash {cron_helper}")
 
 
-def _print_next_steps():
+def _all_keys_present() -> tuple[bool, list[str]]:
+    """Return (ready, missing_keys) based on what is set in .env."""
+    from dotenv import dotenv_values
+    env = dotenv_values(ENV_FILE) if ENV_FILE.exists() else {}
+
+    missing = []
+
+    # Claude auth: either OAuth token or API key
+    oauth = env.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    api_key = env.get("ANTHROPIC_API_KEY", "").strip()
+    if not oauth and not api_key:
+        missing.append("CLAUDE_CODE_OAUTH_TOKEN (or ANTHROPIC_API_KEY)")
+
+    if not env.get("TAVILY_API_KEY", "").strip().startswith("tvly-") or \
+       env.get("TAVILY_API_KEY", "").strip() == "tvly-...":
+        missing.append("TAVILY_API_KEY")
+
+    if not env.get("RESEND_API_KEY", "").strip().startswith("re_") or \
+       env.get("RESEND_API_KEY", "").strip() == "re_...":
+        missing.append("RESEND_API_KEY")
+
+    return len(missing) == 0, missing
+
+
+def _mission_filled_out() -> bool:
+    """Check that mission.yaml has been filled in (not just the template defaults)."""
+    if not MISSION_FILE.exists():
+        return False
+    content = MISSION_FILE.read_text(encoding="utf-8")
+    # The template leaves placeholder text — if the user hasn't changed the name field it's a sign
+    return "Your Name" not in content and "your.email@example.com" not in content
+
+
+def _fire_first_send():
+    """Check readiness and fire the first real digest send."""
     print()
-    print("=" * 60)
-    print("  NEXT STEPS")
-    print("=" * 60)
+    print("─" * 60)
+    print("  FIRST SEND")
+    print("─" * 60)
     print()
-    print("  1. Add your Claude token to .env (see instructions above)")
+
+    ready, missing = _all_keys_present()
+    mission_ok = _mission_filled_out()
+
+    if not mission_ok:
+        print("[skip] mission.yaml still has placeholder values.")
+        print(f"       Fill it out at: {MISSION_FILE}")
+        print("       Then run: python -m scanner run --welcome")
+        return
+
+    if not ready:
+        print("[skip] The following keys are missing or still set to placeholder values:")
+        for k in missing:
+            print(f"         • {k}")
+        print(f"\n       Add them to: {ENV_FILE}")
+        print("       Then run: python -m scanner run --welcome")
+        return
+
+    print("[ok]   All keys are set and mission.yaml is filled out.")
     print()
-    print("  2. Fill out your mission file:")
-    print(f"       {MISSION_FILE}")
+    print("  Kicking off your first scan now — this may take a minute or two.")
+    print("  A digest will be sent to the email in your mission.yaml.")
     print()
-    print("  3. Add your other API keys to .env:")
-    print(f"       {ENV_FILE}")
-    print()
-    print("     Keys you need:")
-    print("       TAVILY_API_KEY  — https://app.tavily.com/  (1,000 free/mo)")
-    print("       RESEND_API_KEY  — https://resend.com/  (free tier)")
-    print()
-    print("  4. Test with a dry run (no email sent):")
-    print("       SCANNER_DRY_RUN=1 python -m scanner run")
-    print()
-    print("  5. Run for real:")
-    print("       python -m scanner run")
-    print()
+
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "scanner", "run", "--welcome"],
+            cwd=str(ROOT),
+            check=False,
+        )
+        if result.returncode == 0:
+            print()
+            print("=" * 60)
+            print("  SCANNER IS LIVE")
+            print("=" * 60)
+            print()
+            print("  Your first digest has been sent.")
+            print("  From now on, a new digest will arrive every morning at 08:00.")
+            print()
+            print("  To tune what you receive, edit:")
+            print(f"    {MISSION_FILE}")
+            print()
+        else:
+            print()
+            print("[warn] The first run encountered an error.")
+            print("       Check the output above for details.")
+            print("       Once fixed, re-run: python -m scanner run --welcome")
+    except Exception as e:
+        print(f"[warn] Could not launch scanner: {e}")
+        print("       Run manually: python -m scanner run --welcome")
 
 
 def run():
@@ -293,4 +358,4 @@ def run():
         print(f"[info] {system} detected — providing cron setup instructions...")
         _setup_cron()
 
-    _print_next_steps()
+    _fire_first_send()

@@ -20,7 +20,8 @@ def main():
         init_run()
     elif command in ("run", ""):
         from .pipeline import run as pipeline_run
-        raise SystemExit(pipeline_run())
+        welcome = "--welcome" in args
+        raise SystemExit(pipeline_run(welcome=welcome))
     else:
         print(f"[scanner] Unknown command: {command!r}")
         print("Usage: python -m scanner [init|run]")

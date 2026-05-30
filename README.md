@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 ### 3. Initialize
 
-Run the setup wizard. It will generate your `mission.yaml` and `.env` files, walk you through Claude auth, and set up your daily background schedule.
+Run the setup wizard. It will generate your `mission.yaml` and `.env` files, walk you through Claude auth, set up your daily background schedule, and — once all keys are filled in — **automatically send your first digest**.
 
 ```bash
 python -m scanner init
@@ -74,21 +74,21 @@ Paste them into your `.env` file alongside the Claude token.
 
 Open `mission.yaml` and fill it out. This is the single file that controls everything — your profile, what you are building, your location preferences, and the search queries Scanner runs every day.
 
-### 7. Test
+### 7. You're done
+
+Once `python -m scanner init` detects that all keys are filled in and `mission.yaml` has been completed, it fires the first real scan automatically and sends your first digest. That email includes a welcome note explaining that future digests will arrive every morning at 08:00 without any further action from you.
+
+If you want to test without sending an email first:
 
 ```bash
 SCANNER_DRY_RUN=1 python -m scanner run
 ```
 
-This runs the full pipeline and prints what would be emailed, without actually sending anything.
-
-### 8. Run
+To trigger a send manually at any time:
 
 ```bash
 python -m scanner run
 ```
-
-If you ran `python -m scanner init`, the scanner is already scheduled to run daily at 08:00 in the background.
 
 ---
 
