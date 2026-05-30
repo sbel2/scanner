@@ -16,7 +16,15 @@ Instead of generic newsletters, Scanner acts like a personal chief of staff. You
 
 ## Quickstart
 
-### 1. Clone and Install
+### 1. Prerequisites
+
+Scanner uses **Claude Code** for LLM scoring. If you don't have it yet:
+
+- Install Claude Code: https://claude.ai/download
+- You need a **Claude Pro or Max** subscription.
+
+### 2. Clone and Install
+
 ```bash
 git clone https://github.com/sbel2/scanner.git
 cd scanner
@@ -25,38 +33,81 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Initialize
-Run the setup wizard. This will generate your `mission.yaml` and `.env` files, and (on macOS) set up your daily background schedule.
+### 3. Initialize
+
+Run the setup wizard. It will generate your `mission.yaml` and `.env` files, walk you through Claude auth, and set up your daily background schedule.
+
 ```bash
 python -m scanner init
 ```
 
-### 3. Configure
-1. **API Keys:** Open `.env` and paste your keys. You will need:
-   - **Anthropic:** https://console.anthropic.com/
-   - **Tavily:** https://app.tavily.com/ (1,000 free searches/month)
-   - **Resend:** https://resend.com/ (free tier; use `onboarding@resend.dev` as sender to skip domain verification)
-2. **Mission File:** Open `mission.yaml` and fill out your profile, background, alignment context, and search queries. This is the single source of truth for the scanner.
+### 4. Get Your Claude Token
 
-### 4. Test
-Run a dry-run to see what the scanner finds without sending an email:
+Scanner uses a **long-lived OAuth token** from Claude Code — no separate API billing. This token is tied to your Claude Pro/Max subscription and lasts 1 year.
+
+```bash
+claude setup-token
+```
+
+Copy the token it prints and paste it into your `.env` file:
+
+```
+CLAUDE_CODE_OAUTH_TOKEN=<your token here>
+```
+
+> **Why this approach?** `claude setup-token` generates a token specifically designed for automated, headless use. It draws from your existing subscription rather than pay-per-token API billing.
+
+### 5. Get Your Other API Keys
+
+You also need two more keys (both have free tiers):
+
+| Key | Where to get it | Free tier |
+|---|---|---|
+| `TAVILY_API_KEY` | https://app.tavily.com/ | 1,000 searches/month |
+| `RESEND_API_KEY` | https://resend.com/ | 100 emails/day |
+
+Paste them into your `.env` file alongside the Claude token.
+
+> **Tip:** Use `onboarding@resend.dev` as your `EMAIL_FROM` to skip domain verification on Resend.
+
+### 6. Configure Your Mission
+
+Open `mission.yaml` and fill it out. This is the single file that controls everything — your profile, what you are building, your location preferences, and the search queries Scanner runs every day.
+
+### 7. Test
+
 ```bash
 SCANNER_DRY_RUN=1 python -m scanner run
 ```
 
-### 5. Run
+This runs the full pipeline and prints what would be emailed, without actually sending anything.
+
+### 8. Run
+
 ```bash
 python -m scanner run
 ```
 
-*(If you used `python -m scanner init`, the scanner is already scheduled to run daily at 08:00 in the background.)*
+If you ran `python -m scanner init`, the scanner is already scheduled to run daily at 08:00 in the background.
 
 ---
 
 ## Architecture & Storage
 
 - **Single file state:** All state (deduplication hashes, scored items, sent digests, run logs) is stored locally in a single SQLite database (`scanner.db`).
-- **Cost:** At typical volumes (~150 candidates/day), the LLM cost is roughly $0.20–0.50/day.
-- **Privacy:** Your `mission.yaml` and `.env` are ignored by git. Your data stays on your machine and is only sent to the LLM providers (Anthropic) for scoring.
+- **Cost:** The Claude token draws from your subscription. Tavily costs ~$0.15/day at typical query volumes. Resend is free.
+- **Privacy:** Your `mission.yaml` and `.env` are ignored by git. Your data stays on your machine and is only sent to Anthropic (for scoring) and Tavily (for search).
 
 For full design details, see [architecture_v1.md](architecture_v1.md).
+
+---
+
+## Tuning
+
+| What to change | Where |
+|---|---|
+| Search queries | `preferences.search_queries` in `mission.yaml` |
+| Scoring rubric context | `alignment` sections in `mission.yaml` |
+| Minimum score threshold | `scoring.min_score_to_send` in `mission.yaml` |
+| Top N results per digest | `settings.top_n` in `mission.yaml` |
+| Geographic preferences | `preferences.locations` in `mission.yaml` |

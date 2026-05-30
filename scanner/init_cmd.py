@@ -18,8 +18,6 @@ MISSION_TEMPLATE = ROOT / "mission.yaml.template"
 MISSION_FILE = ROOT / "mission.yaml"
 ENV_EXAMPLE = ROOT / ".env.example"
 ENV_FILE = ROOT / ".env"
-LAUNCHD_TEMPLATE = ROOT / "launchd" / "com.user.scanner.plist"
-LAUNCHD_TEMPLATE_GENERIC = ROOT / "launchd" / "com.scanner.plist.template"
 
 
 def _print_header():
@@ -56,25 +54,106 @@ def _create_env_file():
         print(f"[ok]   Created .env from .env.example at {ENV_FILE}")
     else:
         ENV_FILE.write_text(
+            "CLAUDE_CODE_OAUTH_TOKEN=\n"
             "TAVILY_API_KEY=tvly-...\n"
             "RESEND_API_KEY=re_...\n"
-            "ANTHROPIC_API_KEY=sk-ant-...\n"
         )
         print(f"[ok]   Created blank .env at {ENV_FILE}")
 
 
 def _check_dependencies():
-    try:
-        import yaml  # noqa: F401
-        import anthropic  # noqa: F401
-        import resend  # noqa: F401
-        import tavily  # noqa: F401
-        import jinja2  # noqa: F401
-        import pydantic  # noqa: F401
-        print("[ok]   All Python dependencies are installed.")
-    except ImportError as e:
-        print(f"[warn] Missing dependency: {e}")
+    missing = []
+    for pkg, import_name in [
+        ("pyyaml", "yaml"),
+        ("resend", "resend"),
+        ("httpx", "httpx"),
+        ("tavily-python", "tavily"),
+        ("pydantic", "pydantic"),
+        ("jinja2", "jinja2"),
+        ("python-dotenv", "dotenv"),
+        ("claude-agent-sdk", "claude_agent_sdk"),
+    ]:
+        try:
+            __import__(import_name)
+        except ImportError:
+            missing.append(pkg)
+
+    if missing:
+        print(f"[warn] Missing packages: {', '.join(missing)}")
         print("       Run: pip install -r requirements.txt")
+    else:
+        print("[ok]   All Python dependencies are installed.")
+
+
+def _check_claude_code():
+    """Check if Claude Code is installed and guide the user through setup-token."""
+    claude_path = shutil.which("claude")
+    if not claude_path:
+        print()
+        print("[warn] Claude Code is not installed or not on your PATH.")
+        print()
+        print("  Claude Code is required for LLM scoring. Install it here:")
+        print("    https://claude.ai/download")
+        print()
+        print("  After installing, run this wizard again:")
+        print("    python -m scanner init")
+        return
+
+    print(f"[ok]   Claude Code found at {claude_path}")
+
+    # Check if a token is already in .env
+    token_set = False
+    if ENV_FILE.exists():
+        content = ENV_FILE.read_text()
+        for line in content.splitlines():
+            if line.startswith("CLAUDE_CODE_OAUTH_TOKEN=") and len(line.split("=", 1)[1].strip()) > 10:
+                token_set = True
+                break
+
+    if token_set:
+        print("[ok]   CLAUDE_CODE_OAUTH_TOKEN already set in .env")
+        return
+
+    print()
+    print("─" * 60)
+    print("  CLAUDE AUTH SETUP")
+    print("─" * 60)
+    print()
+    print("  Scanner uses your Claude Pro/Max subscription for LLM calls.")
+    print("  You need to generate a long-lived token (valid for 1 year).")
+    print()
+    print("  Run this command now:")
+    print()
+    print("    claude setup-token")
+    print()
+    print("  It will print a token. Copy it, then paste it into your .env:")
+    print()
+    print("    CLAUDE_CODE_OAUTH_TOKEN=<paste token here>")
+    print()
+    print("  This token lets Scanner run headlessly every day without")
+    print("  requiring you to log in again.")
+    print()
+
+    # Offer to run setup-token interactively
+    try:
+        answer = input("  Run `claude setup-token` now? [y/N] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        answer = "n"
+
+    if answer == "y":
+        print()
+        try:
+            subprocess.run(["claude", "setup-token"], check=False)
+        except Exception as e:
+            print(f"[warn] Could not run claude setup-token: {e}")
+        print()
+        print("  Copy the token above and add it to your .env file:")
+        print(f"    {ENV_FILE}")
+        print()
+        print("  Line to add/update:")
+        print("    CLAUDE_CODE_OAUTH_TOKEN=<your token>")
+    else:
+        print("  [info] Skipped. Remember to add your token to .env before running.")
 
 
 def _setup_launchd():
@@ -144,19 +223,15 @@ def _setup_launchd():
 
 
 def _setup_cron():
-    """Add a cron job for Linux/non-macOS systems."""
+    """Write an install_cron.sh helper for Linux."""
     python_path = sys.executable
     working_dir = str(ROOT)
-    cron_line = f"0 8 * * * cd {working_dir} && {python_path} -m scanner run >> {working_dir}/logs/scanner.out.log 2>> {working_dir}/logs/scanner.err.log"
+    cron_line = (
+        f"0 8 * * * cd {working_dir} && {python_path} -m scanner run"
+        f" >> {working_dir}/logs/scanner.out.log"
+        f" 2>> {working_dir}/logs/scanner.err.log"
+    )
 
-    print()
-    print("[info] To schedule daily runs on Linux, add this line to your crontab:")
-    print(f"       crontab -e")
-    print()
-    print(f"       {cron_line}")
-    print()
-
-    # Write a helper script
     cron_helper = ROOT / "install_cron.sh"
     cron_helper.write_text(
         f"#!/bin/bash\n"
@@ -165,7 +240,14 @@ def _setup_cron():
         f'echo "Cron job installed. Runs daily at 08:00."\n'
     )
     cron_helper.chmod(0o755)
-    print(f"[ok]   Wrote install_cron.sh — run it to auto-install the cron job.")
+
+    print()
+    print("[info] To schedule daily runs, add this cron entry:")
+    print(f"       crontab -e")
+    print()
+    print(f"       {cron_line}")
+    print()
+    print(f"[ok]   Or just run: bash {cron_helper}")
 
 
 def _print_next_steps():
@@ -174,24 +256,23 @@ def _print_next_steps():
     print("  NEXT STEPS")
     print("=" * 60)
     print()
-    print("  1. Fill out your mission file:")
+    print("  1. Add your Claude token to .env (see instructions above)")
+    print()
+    print("  2. Fill out your mission file:")
     print(f"       {MISSION_FILE}")
     print()
-    print("  2. Add your API keys to .env:")
+    print("  3. Add your other API keys to .env:")
     print(f"       {ENV_FILE}")
     print()
-    print("     Keys you need (all have free tiers):")
-    print("       ANTHROPIC_API_KEY  — https://console.anthropic.com/")
-    print("       TAVILY_API_KEY     — https://app.tavily.com/  (1,000 free/mo)")
-    print("       RESEND_API_KEY     — https://resend.com/  (free tier)")
+    print("     Keys you need:")
+    print("       TAVILY_API_KEY  — https://app.tavily.com/  (1,000 free/mo)")
+    print("       RESEND_API_KEY  — https://resend.com/  (free tier)")
     print()
-    print("  3. Test with a dry run (no email sent):")
+    print("  4. Test with a dry run (no email sent):")
     print("       SCANNER_DRY_RUN=1 python -m scanner run")
     print()
-    print("  4. Run for real:")
+    print("  5. Run for real:")
     print("       python -m scanner run")
-    print()
-    print("  Daily scheduling has been configured above.")
     print()
 
 
@@ -201,6 +282,7 @@ def run():
     _create_mission_file()
     _create_env_file()
     _check_dependencies()
+    _check_claude_code()
 
     system = platform.system()
     print()
