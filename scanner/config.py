@@ -106,6 +106,16 @@ LUMA_CALENDAR_IDS: list[str] = _prefs.get("luma_calendar_ids", [])
 ICAL_FEEDS: list[dict] = _prefs.get("ical_feeds", [])
 
 # ---------------------------------------------------------------------------
+# Eligibility
+# ---------------------------------------------------------------------------
+# Optional fast-path regex rejects. These are inherently relative to YOUR
+# profile (e.g. "undergraduate only" should reject a PhD applicant but NOT an
+# undergrad), so they are user-supplied and default to empty. When empty, the
+# profile-aware LLM eligibility check decides everything.
+_eligibility = _mission.get("eligibility", {})
+HARD_REJECT_PATTERNS: list[str] = _eligibility.get("hard_reject_patterns", [])
+
+# ---------------------------------------------------------------------------
 # Scoring weights
 # ---------------------------------------------------------------------------
 _scoring = _mission.get("scoring", {})
@@ -125,5 +135,5 @@ EMAIL_FROM: str = os.environ.get("EMAIL_FROM") or _email.get("from", "onboarding
 # ---------------------------------------------------------------------------
 _settings = _mission.get("settings", {})
 TOP_N: int = int(os.environ.get("SCANNER_TOP_N") or _settings.get("top_n", 8))
-MODEL_SCORE: str = _settings.get("model_score", "claude-opus-4-7")
-MODEL_FILTER: str = _settings.get("model_filter", "claude-opus-4-7")
+MODEL_SCORE: str = _settings.get("model_score", "claude-sonnet-4-6")
+MODEL_FILTER: str = _settings.get("model_filter", "claude-haiku-4-5-20251001")

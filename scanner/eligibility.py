@@ -1,32 +1,22 @@
 """
 eligibility.py — two-stage eligibility filter.
 
-Stage 1: fast regex pre-filter for common hard-reject patterns.
-Stage 2: LLM check using the user's profile from mission.yaml.
+Stage 1: optional, user-supplied regex pre-filter (mission.yaml).
+Stage 2: profile-aware LLM check using the user's profile from mission.yaml.
+
+Stage 1 defaults to empty because every audience constraint is relative to the
+user (e.g. "undergraduate only" excludes a PhD applicant but is exactly what an
+undergrad wants). Stage 2 is what generalizes; Stage 1 is just a fast, optional
+shortcut for rejects that always apply to a specific user.
 """
 from __future__ import annotations
 
 import json
 import re
 
-from .config import MODEL_FILTER, USER_PROFILE
+from .config import HARD_REJECT_PATTERNS, MODEL_FILTER, USER_PROFILE
 from .llm import complete
 from .models import EligibilityVerdict, Opportunity
-
-# ---------------------------------------------------------------------------
-# Hard-reject patterns — these are universal and not user-specific.
-# They catch opportunities that are structurally incompatible with most users.
-# Users can extend this list in mission.yaml in a future version.
-# ---------------------------------------------------------------------------
-HARD_REJECT_PATTERNS = [
-    r"undergrad(uate)? (only|students only)",
-    r"bachelor'?s? (degree )?only",
-    r"high\s*school (students? )?only",
-    r"must (be|have) graduat(ed|ing) within (the next )?(6|three|3|six) months",
-    r"only open to (citizens of|residents of)\s+(china|india|uk|eu|europe)\b",
-    r"phd\s+graduates?\s+only",
-    r"full[-\s]?time (employee|hire) only",
-]
 
 
 def rule_based_reject(opp: Opportunity) -> tuple[bool, str]:

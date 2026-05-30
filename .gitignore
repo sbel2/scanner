@@ -2,7 +2,7 @@
 .env
 
 # User mission file — personal, not committed
-# (mission.yaml.template IS committed as the blank template)
+# (mission.example.yaml IS committed as the blank template)
 mission.yaml
 
 # Database
@@ -25,5 +25,6 @@ logs/
 *.log
 
 # Generated scheduler files (created by `python -m scanner init`)
-launchd/com.scanner.plist
+# These contain machine-specific absolute paths — never commit them.
+launchd/*.plist
 install_cron.sh

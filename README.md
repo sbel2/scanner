@@ -98,7 +98,7 @@ python -m scanner run
 - **Cost:** The Claude token draws from your subscription. Tavily costs ~$0.15/day at typical query volumes. Resend is free.
 - **Privacy:** Your `mission.yaml` and `.env` are ignored by git. Your data stays on your machine and is only sent to Anthropic (for scoring) and Tavily (for search).
 
-For full design details, see [architecture_v1.md](architecture_v1.md).
+For full design details, see [DESIGN.md](DESIGN.md).
 
 ---
 

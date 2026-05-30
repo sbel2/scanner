@@ -106,6 +106,27 @@ preferences:
   #     location: "Cambridge, MA"
 
 # ----------------------------------------------------------
+# ELIGIBILITY  (optional)
+# ----------------------------------------------------------
+# Scanner decides eligibility with a profile-aware LLM check, so it already
+# understands who you are from the `profile` section above — you usually don't
+# need anything here.
+#
+# `hard_reject_patterns` is an OPTIONAL fast path: any opportunity whose text
+# matches one of these (case-insensitive) regexes is rejected immediately,
+# skipping the LLM call. Because audience rules are relative to YOU, only add
+# patterns that should ALWAYS exclude you. For example:
+#   - a PhD student might reject "undergraduate only" and "high school only"
+#   - an undergrad would do the OPPOSITE and leave this empty
+# Leave it empty (recommended) to let the LLM handle every case.
+eligibility:
+  hard_reject_patterns: []
+  # Example for a graduate-level applicant:
+  #   - "undergrad(uate)? (only|students only)"
+  #   - "high\\s*school (students? )?only"
+  #   - "phd\\s+graduates?\\s+only"
+
+# ----------------------------------------------------------
 # SCORING WEIGHTS  (optional — defaults shown)
 # These control how the final score is computed.
 # final_score = alignment_score * alignment_weight + urgency_score * urgency_weight
@@ -130,6 +151,10 @@ email:
 settings:
   # Number of top opportunities to include in each digest
   top_n: 8
-  # LLM models (change only if you know what you are doing)
-  model_score: "claude-opus-4-7"
-  model_filter: "claude-opus-4-7"
+  # LLM models (change only if you know what you are doing).
+  # Defaults balance quality vs. speed/cost: a cheap, fast model for the
+  # yes/no eligibility gate and a stronger model for nuanced scoring.
+  # Using a top-tier model for the filter is slow and can hit rate limits
+  # on a Pro/Max subscription when many items are collected.
+  model_score: "claude-sonnet-4-6"
+  model_filter: "claude-haiku-4-5-20251001"

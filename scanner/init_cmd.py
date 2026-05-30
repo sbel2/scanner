@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MISSION_TEMPLATE = ROOT / "mission.yaml.template"
+MISSION_TEMPLATE = ROOT / "mission.example.yaml"
 MISSION_FILE = ROOT / "mission.yaml"
 ENV_EXAMPLE = ROOT / ".env.example"
 ENV_FILE = ROOT / ".env"

@@ -1,67 +1,78 @@
-# Scanner — Public Product Architecture
+# Scanner — Design
 
-This document outlines the redesign of the `scanner` project from a personal, hardcoded tool into a general-purpose, open-source product.
+Scanner is an autonomous daily agent that discovers AI-related opportunities
+(events, funding/credits, research programs, internships), filters out anything
+you are ineligible for, scores the rest against your personal mission, and
+emails you a ranked shortlist every morning.
 
-## The Goal
-To allow any user to clone the repository, run a single `init` command, fill out a single configuration file (`mission.yaml`), and immediately have a personalized autonomous AI-opportunity scanner running.
+This document describes how it is put together and why.
 
-## The `mission.yaml` Concept
-Instead of scattering personal context across `.env`, `config.py`, Python strings, and local Obsidian files, the system will rely on a single source of truth: `mission.yaml`.
+## Design goals
 
-This file will contain:
-1. **User Profile**: Name, role, location, and a free-form background/mission statement.
-2. **Alignment Context**: Instead of pointing to local Obsidian files, users will paste their core goals, research interests, or startup pitches directly into the YAML as multiline strings.
-3. **Preferences**: Geographic preferences, target opportunity categories (events, funding, internships), and explicit search queries for Tavily.
-4. **Settings**: Email addresses (to/from), model selections, and schedule preferences.
+1. **One file to configure.** A user should be able to clone the repo, run a
+   single `init` command, fill out a single `mission.yaml`, and have a
+   personalized scanner running daily.
+2. **No personal data in the repo.** Everything specific to a user lives in
+   `mission.yaml`, `.env`, and the local SQLite database — all gitignored. The
+   committed code is fully generic.
+3. **Bring-your-own auth.** Scoring runs on the user's own Claude subscription
+   (via a long-lived Claude Code OAuth token) or an Anthropic API key. No
+   shared keys, no hosted backend.
 
-## Initialization Flow
-1. User clones the repo: `git clone ... && cd scanner`
-2. User runs: `python -m scanner init`
-3. The `init` command:
-   - Generates a heavily commented `mission.yaml` from a template.
-   - Generates a `.env` file for API keys.
-   - Prompts the user to fill them out.
-   - (Optional) Sets up the local `launchd` or cron job based on the current OS.
+## `mission.yaml` — the single source of truth
 
-## Refactoring Plan
-- **`config.py`**: Rewrite to load `mission.yaml`. Remove all hardcoded `USER_PROFILE`, `ALIGNMENT_DOCS`, `TAVILY_QUERIES`, and `LUMA_CALENDAR_IDS`.
-- **`scoring.py`**: Rewrite `RUBRIC` to be dynamic based on the user's `mission.yaml` goals rather than hardcoded MyStartup/ProjectA/Boston logic.
-- **`eligibility.py`**: Make the LLM prompt use the dynamic `mission.yaml` profile. Keep standard hard-reject patterns but allow user overrides.
-- **`sources/tavily.py`**: Read queries directly from `mission.yaml`.
-- **`.env`**: Add `ANTHROPIC_API_KEY` to support standard SDK usage if `claude-agent-sdk` requires it, or document the `claude` CLI login requirement clearly.
+Rather than scattering configuration across environment variables, Python
+constants, and local notes, all user-specific settings live in one YAML file:
 
-## Configuration Schema
+1. **Profile** — name, role, location, and a free-form background/mission
+   statement, injected directly into the LLM prompts.
+2. **Alignment context** — your goals, research interests, or product pitches as
+   multiline strings. These are what the scorer judges relevance against.
+3. **Preferences** — geographic priorities, target categories, explicit Tavily
+   search queries, and optional calendar feeds.
+4. **Settings** — email addresses, scoring weights, model selection, and digest
+   size.
 
-```yaml
-profile:
-  name: ""
-  role: ""
-  location: ""
-  background: |
-    Write a paragraph about who you are and what you are building.
-  
-alignment:
-  - title: "Core Mission"
-    content: |
-      What are you trying to achieve?
-  - title: "Current Project"
-    content: |
-      Details about your startup or research.
+`mission.yaml` is gitignored; `mission.example.yaml` is the committed blank
+that `init` copies for new users.
 
-preferences:
-  locations:
-    - "San Francisco, CA"
-    - "Remote"
-  categories:
-    - event
-    - funding
-    - internship
-  search_queries:
-    - "AI hackathon San Francisco 2026"
-    - "AI startup accelerator application open"
+## Pipeline
 
-settings:
-  email_to: "you@example.com"
-  email_from: "onboarding@resend.dev"
-  top_n: 8
 ```
+collect → dedupe → filter (eligibility) → score (alignment) → rank → deliver
+```
+
+1. **Collect** (`sources/`) — pulls raw opportunities from Lu.ma calendars,
+   institutional ICS feeds, Devpost hackathons, and long-tail web search
+   (Tavily). Each source is independent and failures are isolated.
+2. **Dedupe** (`db.py`) — a content hash per opportunity is stored in SQLite so
+   only new or changed items are scored.
+3. **Filter** (`eligibility.py`) — a fast regex pass rejects structurally
+   incompatible opportunities, then a cheap LLM call checks the user's profile
+   against the eligibility text.
+4. **Score** (`scoring.py`) — a stronger LLM grades each eligible item 0–10
+   across relevance, impact, eligibility fit, geographic fit, and credits, using
+   a rubric built dynamically from `mission.yaml`.
+5. **Rank** (`ranker.py`) — combines the alignment score with deadline urgency
+   using configurable weights.
+6. **Deliver** (`emailer.py`) — renders an HTML digest of the top N items and
+   sends it via Resend.
+
+## Models
+
+The eligibility filter is a high-volume yes/no gate, so it defaults to a small,
+fast model (Haiku). Scoring is lower-volume and benefits from nuance, so it
+defaults to a stronger model (Sonnet). Both are overridable in `mission.yaml`.
+
+## Storage
+
+All state — dedup hashes, scored items, sent digests, and run logs — lives in a
+single local SQLite database (`scanner.db`). There is no server component; the
+database, your mission, and your keys never leave your machine except for the
+LLM scoring calls (to Anthropic) and search queries (to Tavily).
+
+## Scheduling
+
+`init` generates a daily scheduler entry for the host OS — a `launchd` agent on
+macOS or a `cron` line on Linux — that runs the pipeline each morning. The
+generated scheduler file contains machine-specific paths and is gitignored.
