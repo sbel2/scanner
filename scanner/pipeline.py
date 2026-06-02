@@ -6,6 +6,7 @@ import traceback
 from . import db, emailer
 from .config import DB_PATH, DRY_RUN, MIN_SCORE_TO_SEND, TOP_N
 from .eligibility import check as check_eligibility
+from .filters import is_expired, prefilter
 from .models import ScoredOpportunity
 from .ranker import rank
 from .scoring import AlignmentScorer
@@ -35,6 +36,14 @@ def run(welcome: bool = False) -> int:
         collected = collect_all()
         print(f"[scanner] collected {len(collected)} raw items")
 
+        # Universal pre-filter: drop repost/social domains and collapse the same
+        # event scraped under many URLs/titles down to one canonical variant.
+        collected, n_blocked, n_deduped = prefilter(collected)
+        print(
+            f"[scanner] {len(collected)} after prefilter "
+            f"(dropped {n_blocked} repost-domain, {n_deduped} duplicate)"
+        )
+
         with db.connect(DB_PATH) as conn:
             new = [o for o in collected if db.is_new_or_updated(conn, o)]
         print(f"[scanner] {len(new)} new/updated after dedupe")
@@ -45,6 +54,15 @@ def run(welcome: bool = False) -> int:
             scorer = AlignmentScorer()
             scored: list[ScoredOpportunity] = []
             for opp in new:
+                # Deterministic expiry gate — runs before any LLM call so a
+                # closed deadline or past event date is dropped for free and
+                # never reaches scoring.
+                expired, why = is_expired(opp)
+                if expired:
+                    print(f"  drop (expired): {opp.title[:80]}  — {why}")
+                    to_mark_seen.append(opp)
+                    continue
+
                 verdict = check_eligibility(opp)
                 if verdict.eligible == "no":
                     print(f"  drop (ineligible): {opp.title[:80]}  — {verdict.reason}")
@@ -72,14 +90,15 @@ def run(welcome: bool = False) -> int:
 
             eligible = [s for s in ranked if s.final_score >= MIN_SCORE_TO_SEND]
 
-            # Suppress anything already emailed in the last 7 days. This mainly
-            # catches items that re-entered `new` only because their content
-            # changed (e.g. an updated deadline) — we still mark them seen above,
-            # we just don't re-spam them.
+            # Suppress anything already emailed in the last 7 days — both the
+            # exact item (by id) and the same real-world opportunity reappearing
+            # under a different URL/title (by normalized dedup key). We still
+            # mark them seen above; we just don't re-spam them.
             with db.connect(DB_PATH) as conn:
                 eligible = [
                     s for s in eligible
                     if not db.was_recently_in_digest(conn, s.opportunity.id)
+                    and not db.was_key_recently_in_digest(conn, s.opportunity.dedup_key)
                 ]
 
             top = eligible[:TOP_N]
@@ -101,7 +120,12 @@ def run(welcome: bool = False) -> int:
                 else:
                     subject, sent_ids = emailer.send(top, total_new=len(new), welcome=welcome)
                     with db.connect(DB_PATH) as conn:
-                        db.record_digest(conn, sent_ids, subject)
+                        db.record_digest(
+                            conn,
+                            sent_ids,
+                            subject,
+                            dedup_keys=[s.opportunity.dedup_key for s in top],
+                        )
                     print(f"[scanner] sent: {subject}")
             elif scoring_broken:
                 print(f"[scanner] {len(failed)}/{len(scored)} scoring calls failed — sending alert")

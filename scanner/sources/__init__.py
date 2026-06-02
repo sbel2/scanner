@@ -1,9 +1,11 @@
 from .devpost import collect_devpost
+from .extract import collect_extract
 from .ical import collect_ical, collect_luma
 from .tavily import collect_tavily
 
 __all__ = [
     "collect_devpost",
+    "collect_extract",
     "collect_ical",
     "collect_luma",
     "collect_tavily",
@@ -13,7 +15,7 @@ __all__ = [
 
 def collect_all() -> list:
     items = []
-    for fn in (collect_devpost, collect_luma, collect_ical, collect_tavily):
+    for fn in (collect_devpost, collect_luma, collect_ical, collect_tavily, collect_extract):
         try:
             items.extend(fn())
         except Exception as e:

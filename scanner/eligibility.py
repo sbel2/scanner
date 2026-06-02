@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 
 from .config import ELIGIBILITY_RULES, HARD_REJECT_PATTERNS, MODEL_FILTER, USER_PROFILE
 from .llm import complete
@@ -59,10 +60,13 @@ Output ONLY the JSON object, no prose.
 def llm_eligibility(opp: Opportunity) -> EligibilityVerdict:
     system = _build_system_prompt()
     user_msg = (
+        f"TODAY'S DATE: {date.today().isoformat()}\n"
         f"TITLE: {opp.title}\n"
         f"CATEGORY: {opp.category}\n"
         f"SUMMARY: {opp.summary}\n"
-        f"ELIGIBILITY_RAW: {opp.eligibility_raw or '(none provided)'}"
+        f"ELIGIBILITY_RAW: {opp.eligibility_raw or '(none provided)'}\n"
+        "If the text shows the event has already happened or the application "
+        'deadline has passed relative to today, answer "no".'
     )
     try:
         text = complete(system, user_msg, MODEL_FILTER)

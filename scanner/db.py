@@ -40,6 +40,14 @@ CREATE TABLE IF NOT EXISTS digests (
     subject TEXT
 );
 
+-- Normalized dedup keys of items we've emailed, so the same real-world
+-- opportunity is suppressed even when it reappears under a different URL/title.
+CREATE TABLE IF NOT EXISTS digest_keys (
+    dedup_key TEXT NOT NULL,
+    sent_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_digest_keys_sent_at ON digest_keys (sent_at);
+
 CREATE TABLE IF NOT EXISTS runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL,
@@ -133,11 +141,23 @@ def upsert_opportunity(conn: sqlite3.Connection, scored: ScoredOpportunity) -> N
     )
 
 
-def record_digest(conn: sqlite3.Connection, item_ids: list[str], subject: str) -> None:
+def record_digest(
+    conn: sqlite3.Connection,
+    item_ids: list[str],
+    subject: str,
+    dedup_keys: list[str] | None = None,
+) -> None:
+    now = datetime.utcnow().isoformat()
     conn.execute(
         "INSERT INTO digests (sent_at, item_ids_json, subject) VALUES (?, ?, ?)",
-        (datetime.utcnow().isoformat(), json.dumps(item_ids), subject),
+        (now, json.dumps(item_ids), subject),
     )
+    for key in dedup_keys or []:
+        if key:
+            conn.execute(
+                "INSERT INTO digest_keys (dedup_key, sent_at) VALUES (?, ?)",
+                (key, now),
+            )
 
 
 def start_run(conn: sqlite3.Connection) -> int:
@@ -181,3 +201,15 @@ def was_recently_in_digest(conn: sqlite3.Connection, opp_id: str, days: int = 7)
         if opp_id in json.loads(row["item_ids_json"]):
             return True
     return False
+
+
+def was_key_recently_in_digest(conn: sqlite3.Connection, dedup_key: str, days: int = 7) -> bool:
+    """True if an opportunity with this normalized dedup key was emailed within
+    the window — catches the same event reappearing under a new URL/title."""
+    if not dedup_key:
+        return False
+    row = conn.execute(
+        "SELECT 1 FROM digest_keys WHERE dedup_key = ? AND sent_at >= datetime('now', ?) LIMIT 1",
+        (dedup_key, f"-{days} days"),
+    ).fetchone()
+    return row is not None

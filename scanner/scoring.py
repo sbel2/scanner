@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 
 from .config import ALIGNMENT_CONTEXT, MODEL_SCORE, PREFERRED_LOCATIONS, USER_PROFILE
 from .llm import complete
@@ -89,6 +90,7 @@ class AlignmentScorer:
 
     def score(self, opp: Opportunity) -> AlignmentScore:
         user_msg = (
+            f"TODAY'S DATE: {date.today().isoformat()}\n"
             f"TITLE: {opp.title}\n"
             f"CATEGORY: {opp.category}\n"
             f"LOCATION: {opp.location or '(unspecified)'}\n"

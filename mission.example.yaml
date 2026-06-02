@@ -105,6 +105,18 @@ preferences:
   #     url: "https://calendar.mit.edu/department/comp_sci_artificial_intelligence_lab/calendar.ics"
   #     location: "Cambridge, MA"
 
+  # Specific websites or organizations to watch each run (optional).
+  # Use this for pages that keyword search and calendar feeds miss — a
+  # conference landing page, a lab/org events page, a community group, an
+  # accelerator's program page. Each run fetches the page and extracts any
+  # concrete opportunities from it. List the exact URLs.
+  watch_urls: []
+  # Example:
+  # watch_urls:
+  #   - "https://example-conference.ai/2026/"     # a conference you care about
+  #   - "https://some-ai-lab.org/events"          # an org/lab's events page
+  #   - "https://your-city.aitinkerers.org/"      # a local community group
+
 # ----------------------------------------------------------
 # ELIGIBILITY  (optional)
 # ----------------------------------------------------------

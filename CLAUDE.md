@@ -46,6 +46,11 @@ targeted follow-ups ONLY for the facts they didn't cover. The facts you ultimate
 - **What they're building / their goal:** the 2–4 sentence core mission (usually already in
   their story — this is the most important input).
 - **What they want to find:** which of event / funding / research / internship matter.
+- **Specific sites or orgs to track:** ALWAYS ask this explicitly — most people have a few
+  in mind (a favourite conference's page, a lab/org events page, an accelerator, a local
+  community group like an AI Tinkerers chapter). These become `preferences.watch_urls`,
+  which get scraped every run for opportunities that keyword search and calendars miss.
+  Optional — fine to leave empty if they truly have none, but prompt for it; don't skip it.
 - **Where:** preferred locations in priority order (default `Remote` if they don't care).
 - **Hard disqualifiers:** anything that should ALWAYS reject an opportunity for them
   (e.g. "undergrad-only", "must be a US citizen", "PhD-graduates-only"). These become
@@ -65,6 +70,8 @@ Generate the complete file from the interview. Rules:
   (`2026`), their city, their tech stack, and intent words like "application open", "credits",
   "self-serve", "student", "travel grant". This list is what actually surfaces opportunities —
   make it good.
+- `preferences.watch_urls`: the specific pages/orgs they named to track each run (conference
+  landing pages, lab/community event pages, accelerator program pages). Leave `[]` if none.
 - `eligibility.rules`: 2–5 natural-language reject rules from their disqualifiers.
 - `eligibility.hard_reject_patterns`: matching case-insensitive regexes for the obvious ones
   (these skip the LLM call, so only patterns that should ALWAYS reject this specific user).
@@ -106,6 +113,7 @@ Map the request to `mission.yaml` and edit it directly — never touch code for 
 | User wants… | Edit |
 |---|---|
 | Different / more opportunities | `preferences.search_queries` |
+| Track a specific site / org / conference page | add it to `preferences.watch_urls` |
 | Better scoring fit | `alignment` sections + `profile.background` |
 | Stop seeing X | add an `eligibility.rules` entry (+ `hard_reject_patterns` if it's a clear phrase) |
 | More/fewer items per email | `settings.top_n` |

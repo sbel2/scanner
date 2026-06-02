@@ -104,6 +104,10 @@ PREFERRED_CATEGORIES: list[str] = _prefs.get("categories", ["event", "funding", 
 TAVILY_QUERIES: list[str] = _prefs.get("search_queries", [])
 LUMA_CALENDAR_IDS: list[str] = _prefs.get("luma_calendar_ids", [])
 ICAL_FEEDS: list[dict] = _prefs.get("ical_feeds", [])
+# Specific pages to scrape each run via Tavily Extract + LLM parsing. Use for
+# sites that aren't search-friendly or feed-backed (conference pages, community
+# event listings). Each entry is a plain URL string.
+WATCH_URLS: list[str] = _prefs.get("watch_urls", [])
 
 # ---------------------------------------------------------------------------
 # Eligibility

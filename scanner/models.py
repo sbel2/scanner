@@ -32,6 +32,15 @@ class Opportunity(BaseModel):
         return hashlib.sha256(key.encode()).hexdigest()[:16]
 
     @property
+    def dedup_key(self) -> str:
+        """Order-independent fingerprint that collapses the same real-world
+        opportunity scraped under cosmetically different titles. See
+        `filters.title_dedup_key`."""
+        from .filters import title_dedup_key
+
+        return title_dedup_key(self.title)
+
+    @property
     def content_hash(self) -> str:
         key = "|".join([
             self.title,

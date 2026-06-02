@@ -28,3 +28,4 @@ logs/
 # These contain machine-specific absolute paths — never commit them.
 launchd/*.plist
 install_cron.sh
+.claude/scheduled_tasks.lock
