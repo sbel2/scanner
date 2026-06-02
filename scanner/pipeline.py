@@ -7,6 +7,7 @@ from . import db, emailer
 from .config import DB_PATH, DRY_RUN, MIN_SCORE_TO_SEND, TOP_N
 from .eligibility import check as check_eligibility
 from .filters import is_expired, prefilter
+from .freshness import verify_fresh
 from .models import ScoredOpportunity
 from .ranker import rank
 from .scoring import AlignmentScorer
@@ -101,7 +102,22 @@ def run(welcome: bool = False) -> int:
                     and not db.was_key_recently_in_digest(conn, s.opportunity.dedup_key)
                 ]
 
-            top = eligible[:TOP_N]
+            # Verify-before-send freshness gate. Snippet dates are unreliable and
+            # often absent, so we read each candidate's actual page (in rank
+            # order) and drop anything the page shows has already passed, filling
+            # the digest with the next fresh item until we hit TOP_N. This is the
+            # accurate-but-costly step, so it runs only on items that would ship.
+            # Dropped items are already in to_mark_seen (they scored cleanly), so
+            # they won't be re-fetched on future runs.
+            top: list[ScoredOpportunity] = []
+            for s in eligible:
+                if len(top) >= TOP_N:
+                    break
+                expired, why = verify_fresh(s.opportunity)
+                if expired:
+                    print(f"  drop (expired on page): {s.opportunity.title[:80]}  — {why}")
+                    continue
+                top.append(s)
 
             with db.connect(DB_PATH) as conn:
                 for s in ranked:
