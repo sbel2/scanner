@@ -102,6 +102,11 @@ _prefs = _mission.get("preferences", {})
 PREFERRED_LOCATIONS: list[str] = _prefs.get("locations", [])
 PREFERRED_CATEGORIES: list[str] = _prefs.get("categories", ["event", "funding", "research", "internship"])
 TAVILY_QUERIES: list[str] = _prefs.get("search_queries", [])
+# Natural-language directive that lets the LLM generate fresh Tavily queries
+# each run (instead of using the static TAVILY_QUERIES list). When non-empty,
+# the tavily collector calls the LLM at the start of each run with the user's
+# profile + alignment + today's date and uses the generated queries.
+SEARCH_STRATEGY: str = (_prefs.get("search_strategy") or "").strip()
 LUMA_CALENDAR_IDS: list[str] = _prefs.get("luma_calendar_ids", [])
 ICAL_FEEDS: list[dict] = _prefs.get("ical_feeds", [])
 # Specific pages to scrape each run via Tavily Extract + LLM parsing. Use for

@@ -67,29 +67,51 @@ preferences:
     - research
     - internship
 
-  # Tavily search queries — these drive the long-tail web discovery.
-  # Be specific. Include year, location, and key terms.
-  # Aim for 10–30 queries covering your main opportunity types.
-  search_queries:
-    # --- Events ---
-    - "AI hackathon [YOUR CITY] 2026 in-person"
-    - "AI agents meetup [YOUR CITY] 2026"
-    - "AI conference 2026 student travel grant"
+  # search_strategy — a natural-language directive the scanner uses every
+  # morning to generate a FRESH, exploratory batch of web-search queries.
+  # This replaces the old rigid `search_queries:` list. Instead of repeating
+  # the same fixed terms each day, the agent reads today's date + your mission
+  # below and reasons up a diverse set of queries, so signals stay varied and
+  # you discover things a static list would never surface.
+  #
+  # Write it like you're briefing a sharp research assistant: state your
+  # priorities in order, name the kinds of places real opportunities live, and
+  # the phrasings to avoid. Keep it freeform — the agent decides exact wording
+  # and angles each run.
+  #
+  # (Backward-compatible: if you'd rather pin an exact list, delete this block
+  # and add a `search_queries:` list of strings instead — the scanner falls
+  # back to it when `search_strategy` is absent.)
+  search_strategy: |
+    Every morning, generate ~20 diverse web-search queries that surface
+    SPECIFIC, NAMED, NEAR-TERM opportunities for me. Reason fresh — don't just
+    repeat boilerplate or yesterday's terms with the date swapped.
 
-    # --- Funding / Credits ---
-    - "AI startup credits no VC required solo founder 2026"
-    - "OpenAI API credits university student 2026"
-    - "Anthropic Claude credits student researcher 2026"
-    - "AWS Activate Founders self-serve credits 2026"
-    - "Google for Startups Cloud credits 2026"
+    Priorities (in order):
+      1. [Your #1 — e.g. in-person AI events I can attend in my city in the
+         next 2–4 weeks: hackathons with prizes, pitch nights, demo days,
+         talks, builder meetups]. This is the bulk of the queries.
+      2. [Your #2 — e.g. high-value events elsewhere worth traveling for].
+      3. [Your #3 — e.g. fellowships / accelerators / cohorts I can apply to].
+      4. [Your #4 — e.g. internships or roles that fit my stage].
+      5. [Your #5 — e.g. funding / grants relevant to my work].
 
-    # --- Internships / Research ---
-    - "AI research internship Summer 2026 application open"
-    - "AI engineer internship Summer 2026 PhD"
+    How to phrase queries — make them work for me:
+      - Hit real event surfaces directly: name sites like lu.ma, partiful,
+        eventbrite, devpost, and specific org/university domains where actual
+        event pages live.
+      - Use concrete local anchors (neighborhoods, venues, labs, universities,
+        community chapters) so results are near me.
+      - Vary the time-window phrasing: "this week", "this weekend",
+        "{month} {year}", "next 14 days", "upcoming".
+      - AVOID phrasings that pull in aggregator/listicle/category pages — don't
+        write "discover events", "top 25 internships", "best hackathons 2026",
+        "list of...". Those just dump landing pages on you.
+      - At least 3 queries should explore angles I did NOT explicitly name but
+        that fit my mission (adjacent labs, niche communities, VC-hosted nights,
+        incubator office hours, university-affiliated demo events).
 
-    # --- Accelerators / Fellowships ---
-    - "AI startup accelerator 2026 application open early-stage"
-    - "AI fellowship founders 2026"
+    Surprise me. Make the queries genuinely different each day.
 
   # Lu.ma calendar IDs to subscribe to (optional).
   # To find a cal-XXX ID: open the lu.ma calendar page, view source, search "cal-"

@@ -66,10 +66,17 @@ Generate the complete file from the interview. Rules:
 - Fill `profile` (name, role, location, background paragraph).
 - Write 2–3 `alignment` sections (e.g. "Core Mission", "Current Project") — these drive scoring.
 - `preferences.locations`: priority-ordered; `preferences.categories`: the ones they chose.
-- `preferences.search_queries`: **generate 15–25 specific Tavily queries.** Include the year
-  (`2026`), their city, their tech stack, and intent words like "application open", "credits",
-  "self-serve", "student", "travel grant". This list is what actually surfaces opportunities —
-  make it good.
+- `preferences.search_strategy`: **write a natural-language search directive, NOT a fixed
+  query list.** The scanner reads this every morning and has the LLM generate a fresh,
+  exploratory batch of queries from it + that day's date — so signals stay varied instead of
+  repeating the same terms daily. Brief it like a research assistant: state their priorities
+  in order (most important first), name the real event surfaces to hit (lu.ma, partiful,
+  eventbrite, devpost, their key org/university domains), give concrete local anchors
+  (neighborhoods, venues, labs, community chapters), and tell it to AVOID aggregator/listicle
+  phrasings ("discover events", "top 25...", "best ... 2026"). Encourage a few queries that
+  explore angles the user didn't explicitly name. See `mission.example.yaml` for the shape.
+  (Backward-compatible: a `search_queries:` list still works as a fallback if `search_strategy`
+  is absent, but prefer the directive.)
 - `preferences.watch_urls`: the specific pages/orgs they named to track each run (conference
   landing pages, lab/community event pages, accelerator program pages). Leave `[]` if none.
 - `eligibility.rules`: 2–5 natural-language reject rules from their disqualifiers.
@@ -112,7 +119,7 @@ Confirm each is filled before moving on.
 Map the request to `mission.yaml` and edit it directly — never touch code for config changes:
 | User wants… | Edit |
 |---|---|
-| Different / more opportunities | `preferences.search_queries` |
+| Different / more opportunities | `preferences.search_strategy` (the morning query-generation directive) |
 | Track a specific site / org / conference page | add it to `preferences.watch_urls` |
 | Better scoring fit | `alignment` sections + `profile.background` |
 | Stop seeing X | add an `eligibility.rules` entry (+ `hard_reject_patterns` if it's a clear phrase) |

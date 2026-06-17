@@ -163,7 +163,11 @@ def _complete_agent_sdk(system: str, user: str, model: str, oauth_token: str) ->
         options = ClaudeAgentOptions(
             system_prompt=system,
             model=model,
-            max_turns=1,
+            # 3 turns: tools are fully disabled below, so the model can't take
+            # action — extra turns just give Haiku room to think + emit JSON
+            # without hitting "Reached maximum number of turns (1)" mid-response,
+            # which was silently breaking the freshness/eligibility checks.
+            max_turns=3,
             allowed_tools=[],
             disallowed_tools=["*"],
             permission_mode="default",

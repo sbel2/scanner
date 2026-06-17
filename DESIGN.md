@@ -28,8 +28,10 @@ constants, and local notes, all user-specific settings live in one YAML file:
    statement, injected directly into the LLM prompts.
 2. **Alignment context** — your goals, research interests, or product pitches as
    multiline strings. These are what the scorer judges relevance against.
-3. **Preferences** — geographic priorities, target categories, explicit Tavily
-   search queries, and optional calendar feeds.
+3. **Preferences** — geographic priorities, target categories, a natural-language
+   `search_strategy` directive (the LLM generates fresh web-search queries from it
+   each morning; a static `search_queries` list still works as a fallback), and
+   optional calendar feeds.
 4. **Settings** — email addresses, scoring weights, model selection, and digest
    size.
 
