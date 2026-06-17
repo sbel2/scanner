@@ -146,15 +146,26 @@ preferences:
 # understands who you are from the `profile` section above — you usually don't
 # need anything here.
 #
+# Location is handled automatically: the check is given your `preferences.locations`
+# and rejects IN-PERSON events outside them unless the event is remote/virtual. You
+# only need a `rules` entry here if you want to spell that out or make it stricter.
+#
 # `rules` are natural language rejection criteria for the LLM.
-# Claude will generate these dynamically based on your mission.
 #
 # `hard_reject_patterns` is an OPTIONAL fast path: any opportunity whose text
-# matches one of these (case-insensitive) regexes is rejected immediately.
+# matches one of these (case-insensitive) regexes is rejected immediately. Keep
+# these to phrases that should ALWAYS reject for you — a too-broad pattern (e.g. a
+# bare city name) can silently drop legitimately-remote opportunities.
 eligibility:
   rules:
     - "Reject if the opportunity is explicitly for undergraduates only."
     - "Reject if the candidate must be a US citizen and they are not."
+    # Optional — make the automatic location filtering explicit / stricter:
+    # - "Reject in-person events, meetups, or hackathons located outside [YOUR CITIES],
+    #    unless the event is fully remote/virtual or offers a virtual attendance option."
+    # Optional — reject anything already past:
+    # - "Reject expired opportunities: if the event date or the only application
+    #    deadline is before today, reject it."
   hard_reject_patterns:
     - "undergrad(uate)? (only|students only)"
     - "high\\s*school (students? )?only"

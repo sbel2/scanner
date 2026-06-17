@@ -79,9 +79,16 @@ Generate the complete file from the interview. Rules:
   is absent, but prefer the directive.)
 - `preferences.watch_urls`: the specific pages/orgs they named to track each run (conference
   landing pages, lab/community event pages, accelerator program pages). Leave `[]` if none.
-- `eligibility.rules`: 2–5 natural-language reject rules from their disqualifiers.
+- `eligibility.rules`: 2–5 natural-language reject rules from their disqualifiers. Note that
+  **location is already enforced automatically** — the eligibility check is handed
+  `preferences.locations` and rejects in-person events outside them unless remote/virtual, so
+  you don't need a generic geo rule. Add one only to make it explicit or stricter (e.g. a user
+  who will NEVER travel). Likewise the check already drops items it can tell are past; add an
+  explicit "reject expired" rule if they're date-sensitive.
 - `eligibility.hard_reject_patterns`: matching case-insensitive regexes for the obvious ones
   (these skip the LLM call, so only patterns that should ALWAYS reject this specific user).
+  Avoid broad patterns like a bare city name — they can silently drop legitimately-remote
+  opportunities; lean on the LLM rules for nuanced cases like location.
 - `email.to`: the real address they gave you. Leave `email.from` as `onboarding@resend.dev`
   unless they have a verified Resend domain.
 - Leave `scoring` and `settings` at defaults unless they ask.

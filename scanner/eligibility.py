@@ -15,7 +15,13 @@ import json
 import re
 from datetime import date
 
-from .config import ELIGIBILITY_RULES, HARD_REJECT_PATTERNS, MODEL_FILTER, USER_PROFILE
+from .config import (
+    ELIGIBILITY_RULES,
+    HARD_REJECT_PATTERNS,
+    MODEL_FILTER,
+    PREFERRED_LOCATIONS,
+    USER_PROFILE,
+)
 from .llm import complete
 from .models import EligibilityVerdict, Opportunity
 
@@ -39,18 +45,37 @@ def _build_system_prompt() -> str:
             '(answer "no" if any apply):\n'
             f"{rules_list}"
         )
+
+    # The candidate's attendable geography. In-person opportunities outside this
+    # set (and not remote/virtual) are useless to them, so the eligibility gate
+    # needs to know it — the locations live in mission.yaml but otherwise never
+    # reach this check.
+    locations_block = ""
+    if PREFERRED_LOCATIONS:
+        locs = ", ".join(PREFERRED_LOCATIONS)
+        locations_block = f"\n\nCANDIDATE'S ATTENDABLE LOCATIONS (in priority order):\n{locs}"
+
     return f"""You evaluate whether a specific candidate is eligible for an opportunity.
 
 CANDIDATE PROFILE:
-{USER_PROFILE}
+{USER_PROFILE}{locations_block}
 
-You will receive an opportunity title, summary, and any eligibility text.
+You will receive today's date, an opportunity title, summary, and any eligibility text.
 Return strict JSON: {{"eligible": "yes" | "no" | "unclear", "reason": "<one short sentence>"}}.
 
 Rules:
-- "no" only if the opportunity explicitly excludes this candidate (e.g. undergrad-only,
+- "no" if the opportunity explicitly excludes this candidate (e.g. undergrad-only,
   must be graduating in <12 months, citizenship/residency mismatch, age cap, role mismatch).
-- "unclear" if eligibility text is missing or ambiguous.
+- "no" if it has clearly already happened or its only application/registration deadline
+  is strictly before today's date.
+- "no" for IN-PERSON, physically-present opportunities (in-person events, on-site
+  meetups, hackathons, conferences requiring attendance) whose location is NOT one of
+  the candidate's attendable locations above and is NOT remote/virtual/online/hybrid.
+  A clearly remote/virtual/online/hybrid opportunity is always location-eligible.
+  Funding, grants, fellowships, and remote-friendly roles are not rejected on location
+  unless they require relocating somewhere the candidate cannot go.
+- "unclear" if eligibility, date, or location text is missing or ambiguous — do NOT
+  guess a rejection from absent information.
 - "yes" if there is positive evidence the candidate qualifies, OR the opportunity is broadly
   open and nothing in the text excludes them.{custom_rules}
 Output ONLY the JSON object, no prose.
@@ -63,10 +88,13 @@ def llm_eligibility(opp: Opportunity) -> EligibilityVerdict:
         f"TODAY'S DATE: {date.today().isoformat()}\n"
         f"TITLE: {opp.title}\n"
         f"CATEGORY: {opp.category}\n"
+        f"LOCATION: {opp.location or '(not stated)'}\n"
         f"SUMMARY: {opp.summary}\n"
         f"ELIGIBILITY_RAW: {opp.eligibility_raw or '(none provided)'}\n"
         "If the text shows the event has already happened or the application "
-        'deadline has passed relative to today, answer "no".'
+        'deadline has passed relative to today, answer "no". If this is an '
+        "in-person event whose location is not one the candidate can attend and "
+        'it is not remote/virtual, answer "no".'
     )
     try:
         text = complete(system, user_msg, MODEL_FILTER)
