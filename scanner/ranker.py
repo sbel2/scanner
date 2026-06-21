@@ -25,8 +25,13 @@ def _deadline_urgency(deadline: date | None) -> float:
 
 def rank(items: list[ScoredOpportunity]) -> list[ScoredOpportunity]:
     for s in items:
-        urgency = _deadline_urgency(s.opportunity.deadline)
-        s.final_score = round(
-            s.alignment.score * ALIGNMENT_WEIGHT + urgency * URGENCY_WEIGHT, 2
-        )
+        if s.opportunity.category == "news":
+            # News has no deadline/urgency — rank it purely on how relevant the
+            # article is to the user's mission.
+            s.final_score = round(s.alignment.score, 2)
+        else:
+            urgency = _deadline_urgency(s.opportunity.deadline)
+            s.final_score = round(
+                s.alignment.score * ALIGNMENT_WEIGHT + urgency * URGENCY_WEIGHT, 2
+            )
     return sorted(items, key=lambda s: s.final_score, reverse=True)

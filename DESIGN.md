@@ -41,29 +41,56 @@ that `init` copies for new users.
 ## Pipeline
 
 ```
-collect → dedupe → filter (eligibility) → score (alignment) → rank → deliver
+collect → dedupe → cheap gates → prerank → ENRICH+VET (read page) → score → rank → deliver
 ```
 
 1. **Collect** (`sources/`) — pulls raw opportunities from Lu.ma calendars,
    institutional ICS feeds, Devpost hackathons, and long-tail web search
    (Tavily). Each source is independent and failures are isolated.
-2. **Dedupe** (`db.py`) — a content hash per opportunity is stored in SQLite so
-   only new or changed items are scored.
-3. **Filter** (`eligibility.py`) — a fast regex pass rejects structurally
-   incompatible opportunities, then a cheap LLM call checks the user's profile
-   against the eligibility text.
-4. **Score** (`scoring.py`) — a stronger LLM grades each eligible item 0–10
-   across relevance, impact, eligibility fit, geographic fit, and credits, using
-   a rubric built dynamically from `mission.yaml`.
-5. **Rank** (`ranker.py`) — combines the alignment score with deadline urgency
+2. **Dedupe** (`db.py` + `filters.py`) — repost/social domains are dropped, the
+   same event under cosmetically different URLs/titles is collapsed, and a
+   content hash per opportunity is stored in SQLite so only new or changed items
+   continue.
+3. **Cheap gates** (`filters.py`, `eligibility.py`) — items that already carry a
+   past date are dropped deterministically, and a fast regex pass rejects
+   structurally incompatible ones. No LLM, no fetch.
+4. **Prerank** (`prerank.py`) — a no-LLM keyword/heuristic triage picks the most
+   promising slice (`settings.enrich_candidates`, default 40) to spend a page
+   read on. We only need enough confirmed-good items to fill the digest, so we
+   don't read every page — this is what keeps the run fast.
+5. **Enrich + vet** (`enrich.py`) — the core accuracy step. For each candidate we
+   **read the real page** (Tavily Extract advanced → basic → direct HTTPS fetch,
+   with retries) and, in one LLM call, extract its real date/location/deadline/
+   audience *and* decide whether it has already passed and whether the user is
+   eligible. A search snippet rarely contains any of this, so judging on it is
+   guesswork; judging on the page is not. **Date-on-page fallback:** many event
+   pages (Partiful, Luma, …) render their date in JavaScript, so the scraped text
+   has the venue but no date — leaving freshness unjudgeable and stale items
+   shippable. When the page yields no date, we **web-search the event** and judge
+   expiry from the wider web (recap/past-tense hits ⇒ over; a concrete future date
+   clears it). Pages that genuinely can't be read are dropped (an unverifiable
+   item is noise) and left unmarked so a later run can retry them.
+6. **Score** (`scoring.py`) — a stronger LLM grades each surviving item 0–10
+   across relevance, impact, eligibility fit, geographic fit, and credits, now on
+   the enriched real-page content, using a rubric built from `mission.yaml`.
+7. **Rank** (`ranker.py`) — combines the alignment score with deadline urgency
    using configurable weights.
-6. **Deliver** (`emailer.py`) — renders an HTML digest of the top N items and
+8. **Deliver** (`emailer.py`) — renders an HTML digest of the top N items and
    sends it via Resend.
+
+**News lane (optional).** When `news` is in `preferences.categories`, informational
+AI articles (papers, model launches, lab/startup announcements) are handled in a
+parallel lane so they don't pollute the opportunity funnel: they're still read on
+the real page, but `enrich.py`'s `_vet_news` judges **recency + on-topic** instead
+of expiry/eligibility, `ranker.py` scores them on alignment alone (no urgency), and
+the pipeline caps them at `settings.news_max` in a separate "Worth Reading" section.
+News is lower-precision than the gated opportunity categories by nature — the cap and
+`news_recency_days` window keep it from getting noisy.
 
 ## Models
 
-The eligibility filter is a high-volume yes/no gate, so it defaults to a small,
-fast model (Haiku). Scoring is lower-volume and benefits from nuance, so it
+The enrich/vet step is a per-candidate extract-and-judge call, so it defaults to a
+small, fast model (Haiku). Scoring is lower-volume and benefits from nuance, so it
 defaults to a stronger model (Sonnet). Both are overridable in `mission.yaml`.
 
 ## Storage

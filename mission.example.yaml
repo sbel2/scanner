@@ -59,13 +59,19 @@ preferences:
     # - "San Francisco"    # worth a flight for big opportunities
     # - "Remote"           # acceptable for high-value opportunities
 
-  # Which opportunity categories to scan for.
-  # Options: event | funding | research | internship
+  # Which categories to scan for.
+  # Options: event | funding | research | internship | news
+  #   news = informational AI articles (papers, model launches, lab/startup
+  #   announcements). News is NOT an attendable/applicable opportunity — it runs
+  #   in its own lane (judged on recency + on-topic, not eligibility), is capped
+  #   by settings.news_max, and appears in a separate "Worth Reading" section so
+  #   it can never crowd out real opportunities. Omit "news" to turn it off.
   categories:
     - event
     - funding
     - research
     - internship
+    - news
 
   # search_strategy — a natural-language directive the scanner uses every
   # morning to generate a FRESH, exploratory batch of web-search queries.
@@ -87,14 +93,21 @@ preferences:
     SPECIFIC, NAMED, NEAR-TERM opportunities for me. Reason fresh — don't just
     repeat boilerplate or yesterday's terms with the date swapped.
 
-    Priorities (in order):
+    Spread the queries across buckets so the digest keeps flowing even on days
+    when little new is posted in your top category. Near-term local events drain
+    fast; evergreen buckets (internships, fellowships, funding, research) refill
+    steadily — always spend real query budget on them, don't collapse everything
+    onto one priority.
       1. [Your #1 — e.g. in-person AI events I can attend in my city in the
          next 2–4 weeks: hackathons with prizes, pitch nights, demo days,
-         talks, builder meetups]. This is the bulk of the queries.
+         talks, builder meetups].
       2. [Your #2 — e.g. high-value events elsewhere worth traveling for].
       3. [Your #3 — e.g. fellowships / accelerators / cohorts I can apply to].
       4. [Your #4 — e.g. internships or roles that fit my stage].
       5. [Your #5 — e.g. funding / grants relevant to my work].
+      6. [Optional, only if you enabled the "news" category — ~2 queries for
+         recent AI news/papers/announcements worth reading. Target real
+         publications and lab blogs; phrase them as news searches, not "apply".]
 
     How to phrase queries — make them work for me:
       - Hit real event surfaces directly: name sites like lu.ma, partiful,
@@ -196,6 +209,17 @@ email:
 settings:
   # Number of top opportunities to include in each digest
   top_n: 8
+  # How many of the day's most promising items get the accurate page-read + vet
+  # (real date/location/eligibility judged from the actual page, not the search
+  # snippet). Higher = better recall but slower/more LLM calls; lower = faster.
+  # Should be comfortably above top_n so there's headroom after stale/ineligible
+  # items are dropped.
+  enrich_candidates: 40
+  # News lane (only relevant if "news" is in preferences.categories).
+  #   news_max          — max informational news items per digest (own section).
+  #   news_recency_days — an article must be published within this many days.
+  news_max: 3
+  news_recency_days: 14
   # LLM models (change only if you know what you are doing).
   # Defaults balance quality vs. speed/cost: a cheap, fast model for the
   # yes/no eligibility gate and a stronger model for nuanced scoring.

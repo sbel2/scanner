@@ -148,3 +148,19 @@ _settings = _mission.get("settings", {})
 TOP_N: int = int(os.environ.get("SCANNER_TOP_N") or _settings.get("top_n", 8))
 MODEL_SCORE: str = _settings.get("model_score", "claude-sonnet-4-6")
 MODEL_FILTER: str = _settings.get("model_filter", "claude-haiku-4-5-20251001")
+# How many of the day's new items get the expensive page-read + vet (enrich.py).
+# We only need enough confirmed-good candidates to fill TOP_N, so we read the most
+# promising slice (chosen by prerank.py) instead of every item — this is what keeps
+# the run fast while still judging on real page content. Generous default for
+# headroom above TOP_N; override with settings.enrich_candidates or SCANNER_ENRICH.
+ENRICH_CANDIDATES: int = int(
+    os.environ.get("SCANNER_ENRICH") or _settings.get("enrich_candidates", 40)
+)
+
+# Informational "news" lane (papers, launches, lab announcements). News is NOT an
+# attendable/applicable opportunity, so it runs in its own capped lane: judged on
+# recency + on-topic instead of eligibility/expiry, scored on alignment only, and
+# limited to NEWS_MAX items in a separate digest section so it can never crowd out
+# real opportunities. NEWS_RECENCY_DAYS is how fresh an article must be to ship.
+NEWS_MAX: int = int(_settings.get("news_max", 3))
+NEWS_RECENCY_DAYS: int = int(_settings.get("news_recency_days", 14))

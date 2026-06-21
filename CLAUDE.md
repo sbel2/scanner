@@ -45,7 +45,11 @@ targeted follow-ups ONLY for the facts they didn't cover. The facts you ultimate
 - **Who they are:** name, role (PhD student / founder / researcher / etc.), home city/region.
 - **What they're building / their goal:** the 2–4 sentence core mission (usually already in
   their story — this is the most important input).
-- **What they want to find:** which of event / funding / research / internship matter.
+- **What they want to find:** which of event / funding / research / internship matter — and
+  whether they also want **news** (informational AI articles/papers/announcements to read,
+  not opportunities to act on). News is opt-in; only add the `news` category if they say they
+  want a "what's happening in AI" reading section, since it's lower-precision than the gated
+  opportunity categories.
 - **Specific sites or orgs to track:** ALWAYS ask this explicitly — most people have a few
   in mind (a favourite conference's page, a lab/org events page, an accelerator, a local
   community group like an AI Tinkerers chapter). These become `preferences.watch_urls`,
@@ -65,7 +69,13 @@ multiple-choice menus. Keep it to one round of follow-ups if you can.
 Generate the complete file from the interview. Rules:
 - Fill `profile` (name, role, location, background paragraph).
 - Write 2–3 `alignment` sections (e.g. "Core Mission", "Current Project") — these drive scoring.
-- `preferences.locations`: priority-ordered; `preferences.categories`: the ones they chose.
+- `preferences.locations`: priority-ordered; `preferences.categories`: the ones they chose
+  (include `news` ONLY if they asked for a reading section — see below).
+- **Balance the buckets in `search_strategy`:** near-term local events drain fastest, so don't
+  let them eat the whole query budget — explicitly reserve queries for the evergreen categories
+  the user chose (internships, fellowships, funding, research), which refill steadily and keep
+  the digest from going empty on quiet days. If `news` is enabled, add ~2 news queries aimed at
+  real publications/lab blogs (phrased as news searches, not "apply").
 - `preferences.search_strategy`: **write a natural-language search directive, NOT a fixed
   query list.** The scanner reads this every morning and has the LLM generate a fresh,
   exploratory batch of queries from it + that day's date — so signals stay varied instead of
@@ -133,13 +143,40 @@ Map the request to `mission.yaml` and edit it directly — never touch code for 
 | More/fewer items per email | `settings.top_n` |
 | Stricter/looser cutoff | `scoring.min_score_to_send` |
 | Location weighting | `preferences.locations` |
+| Read more/fewer pages per run (recall vs. speed) | `settings.enrich_candidates` (default 40) |
+| Add / remove an AI news reading section | add/remove `news` in `preferences.categories` |
+| More/fewer news items, or how fresh they must be | `settings.news_max` (default 3) / `settings.news_recency_days` (default 14) |
 
 ## How the code is wired (so you edit the right place)
 - `scanner/config.py` — reads every key from `mission.yaml` into module constants.
-- `scanner/eligibility.py` — `rules` + `hard_reject_patterns` feed the eligibility gate.
-- `scanner/scoring.py` — builds the scoring rubric from `profile` + `alignment` + `locations`.
-- `scanner/pipeline.py` — orchestrates collect → filter → score → rank → email.
+- `scanner/eligibility.py` — `hard_reject_patterns` feed the fast regex pre-gate
+  (`rule_based_reject`); `rules` are injected into the page-vet prompt.
+- `scanner/prerank.py` — cheap no-LLM triage that picks which candidates get a page read.
+- `scanner/enrich.py` — the accuracy core: reads each candidate's REAL page (robust
+  fetch with fallbacks) and in one LLM call extracts date/location/audience AND judges
+  freshness + eligibility. `rules` + `locations` + `profile` shape its prompt. When the
+  page exposes no date (JS-rendered Partiful/Luma pages), it falls back to a web search to
+  verify whether the event is upcoming or already past before the item can ship. Items in the
+  `news` category take a separate branch (`_vet_news`) that still reads the page but judges
+  recency + on-topic instead of expiry/eligibility — news is informational, not an opportunity.
+- News lane wiring: `sources/tavily.py` classifies articles as `news` (publication domain /
+  news-verb headline, unless an event/apply signal overrides); `ranker.py` scores news on
+  alignment only (no urgency); `pipeline.py` caps it to `news_max` in a separate lane so it
+  never displaces opportunities; `emailer.py` renders it in a "Worth Reading" section.
+- `scanner/scoring.py` — builds the scoring rubric from `profile` + `alignment` + `locations`;
+  scores the enriched (real-page) opportunity.
+- `scanner/pipeline.py` — orchestrates collect → cheap gates → prerank → enrich/vet →
+  score → rank → email.
 - See `DESIGN.md` for the full architecture.
+
+## Why the pipeline reads pages (do not regress this)
+The decisive design choice is that freshness, eligibility, and scoring all run on the
+opportunity's **actual page content**, not the search snippet. Snippets almost never
+contain the date/location/audience, so snippet-based judging silently shipped stale and
+ineligible items (everything came back "unclear" and "unclear" was allowed through). If a
+future change moves judgement back onto snippets to "save calls," it will reintroduce that
+bug — keep the read-the-page-then-judge order, and tune cost via `enrich_candidates`, not
+by skipping the read.
 
 ## Conventions
 - Use `python3`/`pip3`, not `python`/`pip`.

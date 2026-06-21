@@ -16,7 +16,17 @@ _env = Environment(
     autoescape=select_autoescape(["html", "xml"]),
 )
 
-CATEGORY_ORDER = ["funding", "research", "internship", "event", "other"]
+CATEGORY_ORDER = ["funding", "research", "internship", "event", "other", "news"]
+
+# Friendlier section headings; falls back to the raw category name.
+CATEGORY_LABELS = {
+    "funding": "funding",
+    "research": "research",
+    "internship": "internship",
+    "event": "event",
+    "other": "other",
+    "news": "📰 Worth Reading",
+}
 
 
 def _group_by_category(items: list[ScoredOpportunity]) -> "OrderedDict[str, list[ScoredOpportunity]]":
@@ -32,6 +42,7 @@ def render(items: list[ScoredOpportunity], total_new: int, welcome: bool = False
     html = template.render(
         items=items,
         grouped=grouped,
+        labels=CATEGORY_LABELS,
         today=date.today().isoformat(),
         total=total_new,
         welcome=welcome,

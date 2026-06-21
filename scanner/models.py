@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-Category = Literal["event", "funding", "research", "internship", "other"]
+Category = Literal["event", "funding", "research", "internship", "news", "other"]
 
 
 class Opportunity(BaseModel):

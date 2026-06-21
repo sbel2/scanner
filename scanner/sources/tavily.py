@@ -16,8 +16,45 @@ from ..config import (
 from ..models import Opportunity
 
 
-def _classify(title: str, summary: str) -> str:
+# Publication domains whose articles are informational news, not opportunities.
+# Matched against the registrable host suffix.
+_NEWS_DOMAINS: frozenset[str] = frozenset({
+    "techcrunch.com", "venturebeat.com", "theverge.com", "arstechnica.com",
+    "wired.com", "technologyreview.com", "theinformation.com", "semianalysis.com",
+    "axios.com", "reuters.com", "bloomberg.com", "cnbc.com", "forbes.com",
+    "theregister.com", "zdnet.com", "engadget.com", "spectrum.ieee.org",
+    "nature.com", "sciencedaily.com", "quantamagazine.org", "marktechpost.com",
+    "huggingface.co", "ai.googleblog.com", "deepmind.google", "openai.com",
+    "anthropic.com", "bair.berkeley.edu", "news.mit.edu",
+})
+
+# Strong news-headline verbs — an article reporting something that happened,
+# distinct from an event/program you can attend or apply to.
+_NEWS_VERB_RE = re.compile(
+    r"\b(announc\w+|unveil\w+|launch\w+|introduc\w+|releas\w+|debuts?|"
+    r"raises?\s+\$|secures?\s+\$|report\w*|study (finds|shows)|researchers?\s+(find|show|develop)|"
+    r"open[- ]?sources?)\b",
+    re.IGNORECASE,
+)
+
+
+def _classify(title: str, summary: str, url: str = "") -> str:
+    from ..filters import registrable_domain
+
+    host = registrable_domain(url) if url else ""
+    is_news_domain = any(host == d or host.endswith("." + d) for d in _NEWS_DOMAINS)
+
     blob = f"{title} {summary}".lower()
+    # Event/opportunity signals take precedence over a news classification even on
+    # a publication domain — e.g. a TechCrunch page about a hackathon is an event.
+    opp_signal = any(
+        k in blob
+        for k in ("hackathon", "conference", "workshop", "summit", "pitch competition",
+                  "apply", "deadline", "register", "fellowship", "accelerator", "internship")
+    )
+    if (is_news_domain or _NEWS_VERB_RE.search(title)) and not opp_signal:
+        return "news"
+
     if any(k in blob for k in ("hackathon", "conference", "workshop", "summit", "pitch", "competition")):
         return "event"
     if any(k in blob for k in ("credit", "grant", "fund", "fellowship", "accelerator", "program")):
@@ -123,7 +160,7 @@ def collect_tavily() -> list[Opportunity]:
                     title=title,
                     url=url,
                     source=f"tavily:{_shorten(q)}",
-                    category=_classify(title, content),
+                    category=_classify(title, content, url),
                     summary=content[:800],
                 )
             )

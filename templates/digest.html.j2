@@ -39,7 +39,7 @@ h1 { font-size: 22px; margin-bottom: 4px; }
 {% endif %}
 
 {% for category, group in grouped.items() %}
-  <div class="category">{{ category }}</div>
+  <div class="category">{{ labels.get(category, category) if labels else category }}</div>
   {% for s in group %}
   <div class="item">
     <div class="title"><a href="{{ s.opportunity.url }}">{{ s.opportunity.title }}</a></div>

@@ -4,11 +4,19 @@ import sys
 import traceback
 
 from . import db, emailer
-from .config import DB_PATH, DRY_RUN, MIN_SCORE_TO_SEND, TOP_N
-from .eligibility import check as check_eligibility
+from .config import (
+    DB_PATH,
+    DRY_RUN,
+    ENRICH_CANDIDATES,
+    MIN_SCORE_TO_SEND,
+    NEWS_MAX,
+    TOP_N,
+)
+from .eligibility import rule_based_reject
+from .enrich import vet
 from .filters import is_expired, prefilter
-from .freshness import verify_fresh
 from .models import ScoredOpportunity
+from .prerank import prerank
 from .ranker import rank
 from .scoring import AlignmentScorer
 from .sources import collect_all
@@ -52,32 +60,71 @@ def run(welcome: bool = False) -> int:
         if not new:
             print("[scanner] nothing new to score; ending without sending")
         else:
-            scorer = AlignmentScorer()
-            scored: list[ScoredOpportunity] = []
+            # --- Cheap deterministic + regex gates first (no LLM, no fetch) ----
+            # Drop items that already carry a past date (mostly calendar/watch
+            # feeds) and obvious hard-reject regex matches before we spend a page
+            # read on anything.
+            survivors: list = []
             for opp in new:
-                # Deterministic expiry gate — runs before any LLM call so a
-                # closed deadline or past event date is dropped for free and
-                # never reaches scoring.
                 expired, why = is_expired(opp)
                 if expired:
                     print(f"  drop (expired): {opp.title[:80]}  — {why}")
                     to_mark_seen.append(opp)
                     continue
-
-                verdict = check_eligibility(opp)
-                if verdict.eligible == "no":
-                    print(f"  drop (ineligible): {opp.title[:80]}  — {verdict.reason}")
-                    to_mark_seen.append(opp)  # deliberately rejected — don't re-evaluate
+                rejected, reason = rule_based_reject(opp)
+                if rejected:
+                    print(f"  drop (hard-reject): {opp.title[:80]}  — {reason}")
+                    to_mark_seen.append(opp)
                     continue
-                alignment = scorer.score(opp)
+                survivors.append(opp)
+
+            # --- Pick the most promising slice to read pages for ---------------
+            # Reading a page is the accurate-but-costly step, so we only do it for
+            # the top candidates (enough to fill the digest with headroom) rather
+            # than all ~150 items. Items not chosen are left unmarked so they get
+            # another shot on a future run.
+            candidates = prerank(survivors, ENRICH_CANDIDATES)
+            print(
+                f"[scanner] {len(survivors)} survived cheap gates; "
+                f"reading pages for top {len(candidates)}"
+            )
+
+            # --- Enrich + vet on the REAL page, then score ---------------------
+            # One page read per candidate fills its real date/location/audience
+            # AND decides freshness + eligibility. Everything is judged on facts,
+            # not the search snippet. Unreadable pages are dropped (we can't
+            # verify them) and left unmarked so a later run can retry.
+            scorer = AlignmentScorer()
+            scored: list[ScoredOpportunity] = []
+            for opp in candidates:
+                result = vet(opp)
+                if not result.readable:
+                    print(f"  drop (unreadable): {opp.title[:80]}  — page could not be read")
+                    continue
+
+                enriched = result.opp
+                expired, why = is_expired(enriched)  # backstop on freshly-read dates
+                if result.expired or expired:
+                    print(
+                        f"  drop (expired on page): {enriched.title[:80]}  "
+                        f"— {why or result.expired_reason}"
+                    )
+                    to_mark_seen.append(opp)
+                    continue
+                if result.verdict.eligible == "no":
+                    print(f"  drop (ineligible): {enriched.title[:80]}  — {result.verdict.reason}")
+                    to_mark_seen.append(opp)
+                    continue
+
+                alignment = scorer.score(enriched)
                 scored.append(
                     ScoredOpportunity(
-                        opportunity=opp, eligibility=verdict, alignment=alignment
+                        opportunity=enriched, eligibility=result.verdict, alignment=alignment
                     )
                 )
                 print(
-                    f"  scored {alignment.score:.1f}: {opp.title[:80]}"
-                    + (f"  [{verdict.eligible}]" if verdict.eligible != "yes" else "")
+                    f"  scored {alignment.score:.1f}: {enriched.title[:80]}"
+                    + (f"  [{result.verdict.eligible}]" if result.verdict.eligible != "yes" else "")
                 )
 
             ranked = rank(scored)
@@ -102,28 +149,20 @@ def run(welcome: bool = False) -> int:
                     and not db.was_key_recently_in_digest(conn, s.opportunity.dedup_key)
                 ]
 
-            # Verify-before-send freshness gate. Snippet dates are unreliable and
-            # often absent, so we read each candidate's actual page (in rank
-            # order) and drop anything the page shows has already passed, filling
-            # the digest with the next fresh item until we hit TOP_N. This is the
-            # accurate-but-costly step, so it runs only on items that would ship.
-            # Dropped items are already in to_mark_seen (they scored cleanly), so
-            # they won't be re-fetched on future runs.
-            top: list[ScoredOpportunity] = []
-            for s in eligible:
-                if len(top) >= TOP_N:
-                    break
-                expired, why = verify_fresh(s.opportunity)
-                if expired:
-                    print(f"  drop (expired on page): {s.opportunity.title[:80]}  — {why}")
-                    continue
-                top.append(s)
+            # Opportunities fill TOP_N; news rides along in its own capped lane so
+            # it can never push a real opportunity out of the digest.
+            opp_picks = [s for s in eligible if s.opportunity.category != "news"][:TOP_N]
+            news_picks = [s for s in eligible if s.opportunity.category == "news"][:NEWS_MAX]
+            top = opp_picks + news_picks
 
             with db.connect(DB_PATH) as conn:
                 for s in ranked:
                     db.upsert_opportunity(conn, s)
 
-            print(f"[scanner] {len(ranked)} scored, {len(top)} pass threshold + top_n")
+            print(
+                f"[scanner] {len(ranked)} scored, {len(opp_picks)} opportunities "
+                f"+ {len(news_picks)} news pass threshold"
+            )
 
             failed = [s for s in scored if s.alignment.reasoning.startswith("scoring failed:")]
             scoring_broken = len(scored) > 0 and len(failed) / len(scored) >= 0.5
